@@ -13,8 +13,13 @@ parser = OptionParser(usage = """usage: %prog [options] LOCAL-FEED
 
 Run this command from a new empty directory to set things up.""")
 
+parser.add_option("-k", "--key", help="GPG key to use for signing", action='store', metavar='KEYID')
 parser.add_option("-v", "--verbose", help="more verbose output", action='count')
 parser.add_option("-r", "--release", help="make a new release", action='store_true')
+parser.add_option("", "--archive-dir-public-url", help="remote directory for releases", metavar='URL')
+parser.add_option("", "--master-feed-file", help="local file to extend with new releases", metavar='PATH')
+parser.add_option("", "--archive-upload-command", help="shell command to upload releases", metavar='COMMAND')
+parser.add_option("", "--master-feed-upload-command", help="shell command to upload feed", metavar='COMMAND')
 parser.add_option("-V", "--version", help="display version information", action='store_true')
 
 (options, args) = parser.parse_args()
@@ -52,7 +57,7 @@ try:
 
 	if options.release:
 		import release
-		release.make_new_release(iface)
+		release.do_release(iface, options)
 	else:
 		import setup
 		setup.init_releases_directory(iface)

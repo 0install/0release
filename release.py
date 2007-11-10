@@ -1,48 +1,20 @@
-import os, sys, subprocess, shutil, tarfile
+# Copyright (C) 2007, Thomas Leonard
+# See the README file for details, or visit http://0install.net.
+
+import os, sys, subprocess, shutil, tarfile, tempfile
 from zeroinstall import SafeException
 from zeroinstall.injector import reader, model
 from logging import info
+from scm import GIT
 
-class SCM:
-	def __init__(self, local_iface):
-		self.local_iface = local_iface
-
-class GIT(SCM):
-	def _run(self, args, **kwargs):
-		return subprocess.Popen(["git"] + args, cwd = os.path.dirname(self.local_iface.uri), **kwargs)
-	
-	def _run_check(self, args, **kwargs):
-		child = self._run(args, **kwargs)
-		code = child.wait()
-		if code:
-			raise SafeException("Git %s failed with exit code %d" % (repr(args), code))
-
-	def ensure_committed(self):
-		child = self._run(["status", "-a"], stdout = subprocess.PIPE)
-		stdout, unused = child.communicate()
-		if not child.returncode:
-			raise SafeException('Uncommitted changes! Use "git-commit -a" to commit them. Changes are:\n' + stdout)
-	
-	def tag(self, version):
-		tag = 'v' + version
-		self.commit('Release %s' % version)
-		self._run_check(['tag', tag])
-		print "Tagged as %s" % tag
-	
-	def export(self, prefix, archive_file):
-		child = self._run(['archive', '--format=tar', '--prefix=' + prefix + '/', 'HEAD'], stdout = subprocess.PIPE)
-		subprocess.check_call(['bzip2', '-'], stdin = child.stdout, stdout = file(archive_file, 'w'))
-		status = child.wait()
-		if status:
-			if os.path.exists(archive_file):
-				os.unlink(archive_file)
-			raise SafeException("git-archive failed with exit code %d" % status)
-	
-	def commit(self, message):
-		self._run_check(['commit', '-a', '-m', message])
+release_status_file = 'release-status'
 
 def run_unit_tests(impl):
-	print "SKIPPING unit tests for %s" % impl
+	print "SKIPPING unit tests for %s (sorry - not yet implemented!)" % impl
+
+def show_and_run(cmd, args):
+	print "Executing: %s %s" % (cmd, ' '.join("[%s]" % x for x in args))
+	subprocess.check_call(['sh', '-c', cmd, '-'] + args)
 
 def suggest_release_version(snapshot_version):
 	"""Given a snapshot version, suggest a suitable release version.
@@ -68,7 +40,11 @@ def suggest_release_version(snapshot_version):
 def publish(iface, **kwargs):
 	args = [os.environ['0PUBLISH']]
 	for k in kwargs:
-		args += ['--' + k.replace('_', '-'), kwargs[k]]
+		value = kwargs[k] 
+		if value is True:
+			args += ['--' + k.replace('_', '-')]
+		elif value is not None:
+			args += ['--' + k.replace('_', '-'), value]
 	args.append(iface)
 	info("Executing %s", args)
 	subprocess.check_call(args)
@@ -84,12 +60,51 @@ def backup_if_exists(name):
 		return
 	backup = name + '~'
 	if os.path.exists(backup):
-		print "DELETING old backup", backup
-		shutil.rmtree(backup)
+		print "(deleting old backup %s)" % backup
+		if os.path.isdir(backup):
+			shutil.rmtree(backup)
+		else:
+			os.unlink(backup)
 	os.rename(name, backup)
-	print "Renamed old %s as %s. Will delete on next run." % (name, backup)
+	print "(renamed old %s as %s; will delete on next run)" % (name, backup)
 
-def make_new_release(local_iface):
+class Status(object):
+	__slots__ = ['old_snapshot_version', 'release_version', 'head_before_release', 'new_snapshot_version', 'head_at_release', 'created_archive', 'tagged']
+	def __init__(self):
+		for name in self.__slots__:
+			setattr(self, name, None)
+
+		if os.path.isfile(release_status_file):
+			for line in file(release_status_file):
+				assert line.endswith('\n')
+				line = line[:-1]
+				name, value = line.split('=')
+				setattr(self, name, value)
+				info("Loaded status %s=%s", name, value)
+
+	def save(self):
+		tmp_name = release_status_file + '.new'
+		tmp = file(tmp_name, 'w')
+		try:
+			lines = ["%s=%s\n" % (name, getattr(self, name)) for name in self.__slots__ if getattr(self, name)]
+			tmp.write(''.join(lines))
+			tmp.close()
+			os.rename(tmp_name, release_status_file)
+			info("Wrote status to %s", release_status_file)
+		except:
+			os.unlink(tmp_name)
+			raise
+
+def get_choice(*options):
+	while True:
+		choice = raw_input('/'.join(options) + ': ').lower()
+		if not choice: continue
+		for o in options:
+			if o.lower().startswith(choice):
+				return o
+
+def do_release(local_iface, options):
+	status = Status()
 	local_impl = get_singleton_impl(local_iface)
 
 	local_impl_dir = local_impl.id
@@ -101,25 +116,37 @@ def make_new_release(local_iface):
 	assert not local_iface_rel_path.startswith('/')
 	assert os.path.isfile(os.path.join(local_impl_dir, local_iface_rel_path))
 
-	downloads_base = 'http://placeholder.org/releases'
-
 	scm = GIT(local_iface)
 
-	def tag_release():
+	def set_to_release():
 		print "Snapshot version is " + local_impl.get_version()
 		suggested = suggest_release_version(local_impl.get_version())
 		release_version = raw_input("Version number for new release [%s]: " % suggested)
 		if not release_version:
 			release_version = suggested
+
+		scm.ensure_no_tag(release_version)
+
+		status.head_before_release = scm.get_head_revision()
+		status.save()
+
 		print "Releasing version", release_version
 		publish(local_iface.uri, set_released = 'today', set_version = release_version)
-		scm.tag(release_version)
+
+		status.old_snapshot_version = local_impl.get_version()
+		status.release_version = release_version
+		scm.commit('Release %s' % release_version)
+		status.head_at_release = scm.get_head_revision()
+		status.save()
+
 		return release_version
 	
 	def set_to_snapshot(snapshot_version):
 		assert snapshot_version.endswith('-post')
 		publish(local_iface.uri, set_released = '', set_version = snapshot_version)
 		scm.commit('Start development series %s' % snapshot_version)
+		status.new_snapshot_version = scm.get_head_revision()
+		status.save()
 		
 	def ensure_ready_to_release():
 		scm.ensure_committed()
@@ -127,34 +154,119 @@ def make_new_release(local_iface):
 		# Not needed for GIT. For SCMs where tagging is expensive (e.g. svn) this might be useful.
 		#run_unit_tests(local_impl)
 	
-	def create_feed(archive_file, archive_name, version):
-		remote_dl_iface = os.path.abspath(local_iface.name + '-' + version + '.xml')
-		shutil.copyfile(local_iface.uri, remote_dl_iface)
+	def create_feed(local_iface_stream, archive_file, archive_name, version):
+		tmp = tempfile.NamedTemporaryFile(prefix = '0release-')
+		shutil.copyfileobj(local_iface_stream, tmp)
+		tmp.flush()
 
-		publish(remote_dl_iface,
-			archive_url = downloads_base + '/' + os.path.basename(archive_file),
+		publish(tmp.name,
+			archive_url = options.archive_dir_public_url + '/' + os.path.basename(archive_file),
 			archive_file = archive_file,
 			archive_extract = archive_name)
+		return tmp
 	
-	def unpack_tarball(archive_file):
+	def unpack_tarball(archive_file, archive_name):
 		tar = tarfile.open(archive_file, 'r:bz2')
-		tar.extractall('.')
+		members = [m for m in tar.getmembers() if m.name != 'pax_global_header']
+		tar.extractall('.', members = members)
+	
+	def fail_candidate(archive_file):
+		backup_if_exists(archive_file)
+		head = scm.get_head_revision()
+		if head != status.new_snapshot_version:
+			raise SafeException("There have been commits since starting the release! Please rebase them onto %s" % status.head_before_release)
+		# Check no uncommitted changes
+		scm.ensure_committed()
+		scm.reset_hard(status.head_before_release)
+		os.unlink(release_status_file)
+		print "Restored to state before starting release. Make your fixes and try again..."
+	
+	def accept_and_publish(archive_file, archive_name, local_iface_rel_path):
+		assert options.master_feed_file
+
+		if status.tagged:
+			print "Already tagged and added to master feed."
+		else:
+			tar = tarfile.open(archive_file, 'r:bz2')
+			stream = tar.extractfile(tar.getmember(archive_name + '/' + local_iface_rel_path))
+			remote_dl_iface = create_feed(stream, archive_file, archive_name, version)
+			stream.close()
+
+			publish(options.master_feed_file, local = remote_dl_iface.name, xmlsign = True, key = options.key)
+			remote_dl_iface.close()
+
+			scm.tag(status.release_version, status.head_at_release)
+
+			status.tagged = 'true'
+			status.save()
+
+		# Copy files...
+		print "Upload %s as %s" % (archive_file, options.archive_dir_public_url + '/' + os.path.basename(archive_file))
+		cmd = options.archive_upload_command.strip()
+		if cmd:
+			show_and_run(cmd, [archive_file])
+		else:
+			print "NOTE: No upload command set => you'll have to upload it yourself!"
+
+		assert len(local_iface.feed_for) == 1
+		feed_base = os.path.dirname(local_iface.feed_for.keys()[0])
+		feed_files = [options.master_feed_file]
+		print "Upload %s into %s" % (', '.join(feed_files), feed_base)
+		cmd = options.master_feed_upload_command.strip()
+		if cmd:
+			show_and_run(cmd, feed_files)
+		else:
+			print "NOTE: No feed upload command set => you'll have to upload them yourself!"
+
+		os.unlink(release_status_file)
+	
+	if status.head_before_release:
+		head = scm.get_head_revision() 
+		if status.release_version:
+			print "RESUMING release of version %s" % status.release_version
+		elif head == status.head_before_release:
+			print "Restarting release (HEAD revision has not changed)"
+		else:
+			raise SafeException("Something went wrong with the last run:\n" +
+					    "HEAD revision for last run was " + status.head_before_release + "\n" +
+					    "HEAD revision now is " + head + "\n" +
+					    "You should revert your working copy to the previous head and try again.\n" +
+					    "If you're sure you want to release from the current head, delete '" + release_status_file + "'")
 
 	print "Releasing", local_iface.get_name()
 
 	ensure_ready_to_release()
 
-	version = tag_release()
-	#version = '0.1'
+	if status.release_version:
+		version = status.release_version
+		need_set_snapshot = False
+		if status.new_snapshot_version:
+			head = scm.get_head_revision() 
+			if head != status.new_snapshot_version:
+				print "WARNING: there are more commits since we tagged; they will not be included in the release!"
+		else:
+			raise SafeException("Something went wrong previously when setting the new snapshot version.\n" +
+					    "Suggest you reset to the original HEAD of\n%s and delete '%s'." % (status.head_before_release, release_status_file))
+	else:
+		version = set_to_release()
+		need_set_snapshot = True
 
 	archive_name = local_iface.get_name().lower().replace(' ', '-') + '-' + version
 	archive_file = archive_name + '.tar.bz2'
-	scm.export(archive_name, archive_file)
 
-	create_feed(archive_file, archive_name, version)
+	if status.created_archive and os.path.isfile(archive_file):
+		print "Archive already created"
+	else:
+		backup_if_exists(archive_file)
+		scm.export(archive_name, archive_file)
+		status.created_archive = 'true'
+		status.save()
 
-	backup_if_exists(archive_name)
-	unpack_tarball(archive_file)
+	if need_set_snapshot:
+		set_to_snapshot(version + '-post')
+
+	#backup_if_exists(archive_name)
+	unpack_tarball(archive_file, archive_name)
 	if local_impl.main:
 		main = os.path.join(archive_name, local_impl.main)
 		if not os.path.exists(main):
@@ -166,7 +278,24 @@ def make_new_release(local_iface):
 	extracted_impl = get_singleton_impl(extracted_iface)
 	run_unit_tests(extracted_impl)
 
-	set_to_snapshot(version + '-post')
+	print "\nCandidate release archive:", archive_file
+	print "(extracted to %s for inspection)" % os.path.abspath(archive_name)
+
+	print "\nPlease check candidate and select an action:"
+	print "P) Publish candidate (accept)"
+	print "F) Fail candidate (untag)"
+	print "(you can also hit CTRL-C and resume this script when done)"
+	choice = get_choice('Publish', 'Fail')
+
+	info("Deleting extracted archive %s", archive_name)
+	shutil.rmtree(archive_name)
+
+	if choice == 'Publish':
+		accept_and_publish(archive_file, archive_name, local_iface_rel_path)
+	else:
+		assert choice == 'Fail'
+		fail_candidate(archive_file)
+
 
 if __name__ == "__main__":
     import doctest
