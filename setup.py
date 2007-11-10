@@ -5,7 +5,7 @@ import os, sys
 from zeroinstall import SafeException
 from zeroinstall.injector import reader, model
 
-release_uri = '/home/talex/Projects/zero-install/0release/0release.xml'
+release_uri = 'http://0install.net/2007/interfaces/0release.xml'
 
 umask = os.umask(0)
 os.umask(umask)
