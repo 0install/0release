@@ -1,0 +1,21 @@
+<?xml version="1.0" ?>
+<interface xmlns="http://zero-install.sourceforge.net/2004/injector/interface">
+  <name>0release</name>
+  <summary>manage new releases with Zero Install</summary>
+  <description>
+    If you have a local feed in the development version of your program,
+    0release can help you to create new releases easily.
+  </description>
+
+  <homepage>http://0install.net/0release.xml</homepage>
+
+  <feed-for interface='http://0install.net/2007/interfaces/0release.xml'/>
+
+  <group main='0release'>
+    <requires interface='http://0install.net/2006/interfaces/0publish'>
+      <version not-before='0.11-post'/>
+      <environment name='0PUBLISH' insert='0publish'/>
+    </requires>
+    <implementation id="." version="0.1-pre"/>
+  </group>
+</interface>
