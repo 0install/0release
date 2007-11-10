@@ -11,7 +11,7 @@
 
   <feed-for interface='http://0install.net/2007/interfaces/0release.xml'/>
 
-  <group main='0release'>
+  <group main="0release" license="OSI Approved :: GNU Lesser General Public License (LGPL)">
     <requires interface='http://0install.net/2006/interfaces/0publish'>
       <version not-before='0.11-post'/>
       <environment name='0PUBLISH' insert='0publish'/>
