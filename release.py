@@ -7,7 +7,11 @@ from zeroinstall.injector import reader, model
 from logging import info
 from scm import GIT
 
+XMLNS_RELEASE = 'http://zero-install.sourceforge.net/2007/namespaces/0release'
+
 release_status_file = 'release-status'
+
+valid_phases = ['commit-release']
 
 def run_unit_tests(impl):
 	self_test = impl.metadata.get('self-test', None)
@@ -124,7 +128,35 @@ def do_release(local_iface, options):
 	assert not local_iface_rel_path.startswith('/')
 	assert os.path.isfile(os.path.join(local_impl_dir, local_iface_rel_path))
 
+	phase_actions = {}
+	for phase in valid_phases:
+		phase_actions[phase] = []	# List of <release:action> elements
+
+	release_management = local_iface.get_metadata(XMLNS_RELEASE, 'management')
+	if len(release_management) == 1:
+		info("Found <release:management> element.")
+		release_management = release_management[0]
+		for x in release_management.childNodes:
+			if x.uri == XMLNS_RELEASE and x.name == 'action':
+				phase = x.getAttribute('phase')
+				assert phase in valid_phases, "Invalid action phase in " + x
+				phase_actions[phase].append(x.content)
+			else:
+				warn("Unknown <release:management> element: %s", x)
+	elif len(release_management) > 1:
+		raise SafeException("Multiple <release:management> sections in %s!" % local_iface)
+	else:
+		info("No <release:management> element found in local feed.")
+
 	scm = GIT(local_iface)
+
+	def run_hooks(phase, cwd, env):
+		info("Running hooks for phase '%s'" % phase)
+		full_env = os.environ.copy()
+		full_env.update(env)
+		for x in phase_actions[phase]:
+			print "[%s]: %s" % (phase, x)
+			subprocess.check_call(x, shell = True, cwd = cwd, env = full_env)
 
 	def set_to_release():
 		print "Snapshot version is " + local_impl.get_version()
@@ -137,6 +169,9 @@ def do_release(local_iface, options):
 
 		status.head_before_release = scm.get_head_revision()
 		status.save()
+
+		working_copy = local_impl.id
+		run_hooks('commit-release', cwd = working_copy, env = {'RELEASE_VERSION': release_version})
 
 		print "Releasing version", release_version
 		publish(local_iface.uri, set_released = 'today', set_version = release_version)
