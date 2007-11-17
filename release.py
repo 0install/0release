@@ -10,7 +10,15 @@ from scm import GIT
 release_status_file = 'release-status'
 
 def run_unit_tests(impl):
-	print "SKIPPING unit tests for %s (sorry - not yet implemented!)" % impl
+	self_test = impl.metadata.get('self-test', None)
+	if self_test is None:
+		print "SKIPPING unit tests for %s (no 'self-test' attribute set)" % impl
+		return
+	self_test = os.path.join(impl.id, self_test)
+	print "Running self-test:", self_test
+	exitstatus = subprocess.call([self_test], cwd = impl.id)
+	if exitstatus:
+		raise SafeException("Self-test failed with exit status %d" % exitstatus)
 
 def show_and_run(cmd, args):
 	print "Executing: %s %s" % (cmd, ' '.join("[%s]" % x for x in args))
@@ -276,7 +284,13 @@ def do_release(local_iface, options):
 	extracted_iface = model.Interface(extracted_iface_path)
 	reader.update(extracted_iface, extracted_iface_path, local = True)
 	extracted_impl = get_singleton_impl(extracted_iface)
-	run_unit_tests(extracted_impl)
+
+	try:
+		run_unit_tests(extracted_impl)
+	except SafeException:
+		print "(leaving extracted directory for examination)"
+		fail_candidate(archive_file)
+		raise
 
 	print "\nCandidate release archive:", archive_file
 	print "(extracted to %s for inspection)" % os.path.abspath(archive_name)
