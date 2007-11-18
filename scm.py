@@ -82,4 +82,7 @@ class GIT(SCM):
 		return head
 	
 	def export_changelog(self, last_release_version, head, stream):
-		self._run_check(['log', 'refs/tags/v' + last_release_version + '..' + head], stdout = stream)
+		if last_release_version:
+			self._run_check(['log', 'refs/tags/v' + last_release_version + '..' + head], stdout = stream)
+		else:
+			self._run_check(['log', head], stdout = stream)

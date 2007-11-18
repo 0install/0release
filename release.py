@@ -217,13 +217,13 @@ def do_release(local_iface, options):
 	def export_changelog():
 		parsed_release_version = model.parse_version(status.release_version)
 
-		master = model.Interface(options.master_feed_file)
-		reader.update(master, master.uri, local = True)
-		versions = [impl.version for impl in master.implementations.values() if impl.version < parsed_release_version]
-		if not versions:
-			previous_release = None
-		else:
-			previous_release = model.format_version(max(versions))
+		previous_release = None
+		if os.path.exists(options.master_feed_file):
+			master = model.Interface(options.master_feed_file)
+			reader.update(master, master.uri, local = True)
+			versions = [impl.version for impl in master.implementations.values() if impl.version < parsed_release_version]
+			if versions:
+				previous_release = model.format_version(max(versions))
 
 		changelog = file('changelog-%s' % status.release_version, 'w')
 		scm.export_changelog(previous_release, status.head_before_release, changelog)
