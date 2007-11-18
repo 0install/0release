@@ -262,6 +262,13 @@ def do_release(local_iface, options):
 		else:
 			print "NOTE: No feed upload command set => you'll have to upload them yourself!"
 
+		print "Push changes to public SCM repository..."
+		public_repos = options.public_scm_repository
+		if public_repos:
+			scm.push_head_and_release(status.release_version)
+		else:
+			print "NOTE: No public repository set => you'll have to push the tag and trunk yourself."
+
 		os.unlink(release_status_file)
 	
 	if status.head_before_release:

@@ -35,13 +35,22 @@ MASTER_FEED_FILE="%s"
 # A shell command to upload the generated archive file to the
 # public server (corresponds to $ARCHIVE_DIR_PUBLIC_URL, which is
 # used to download it again).
+# If unset, you'll have to upload it yourself.
 #ARCHIVE_UPLOAD_COMMAND='scp "$@" me@myhost:/var/www/releases/'
 ARCHIVE_UPLOAD_COMMAND=
 
-# A shell command to upload the master feed ($MASTER_FEED_FILE)
-# to your web server. It will be downloaded using the feed's URL.
+# A shell command to upload the master feed ($MASTER_FEED_FILE) and
+# related files to your web server. It will be downloaded using the
+# feed's URL. If unset, you'll have to upload it yourself.
 #MASTER_FEED_UPLOAD_COMMAND='scp "$@" me@myhost:/var/www/feeds/'
 MASTER_FEED_UPLOAD_COMMAND=
+
+# Your public version control repository. When publishing, the new
+# HEAD and the release tag will be pushed to this using a command
+# such as "git-push main master v0.1"
+# If unset, you'll have to update it yourself.
+#PUBLIC_SCM_REPOSITORY=main
+PUBLIC_SCM_REPOSITORY=
 
 cd `dirname "$0"`
 exec 0launch %s --release %s \\
@@ -49,6 +58,7 @@ exec 0launch %s --release %s \\
  --master-feed-file="$MASTER_FEED_FILE" \\
  --archive-upload-command="$ARCHIVE_UPLOAD_COMMAND" \\
  --master-feed-upload-command="$MASTER_FEED_UPLOAD_COMMAND" \\
+ --public-scm-repository="$PUBLIC_SCM_REPOSITORY" \\
  "$@"
 """ % (master_feed_name, release_uri, iface.uri))
 	make_release.close()

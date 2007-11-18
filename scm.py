@@ -3,6 +3,7 @@
 
 import os, subprocess
 from zeroinstall import SafeException
+from logging import info
 
 class SCM:
 	def __init__(self, local_iface, options):
@@ -11,6 +12,7 @@ class SCM:
 
 class GIT(SCM):
 	def _run(self, args, **kwargs):
+		info("Running git %s", ' '.join(args))
 		return subprocess.Popen(["git"] + args, cwd = os.path.dirname(self.local_iface.uri), **kwargs)
 	
 	def _run_check(self, args, **kwargs):
@@ -29,7 +31,7 @@ class GIT(SCM):
 			raise SafeException('Uncommitted changes! Use "git-commit -a" to commit them. Changes are:\n' + stdout)
 	
 	def make_tag(self, version):
-		return 'v' + version
+		return 'refs/tags/v' + version
 
 	def tag(self, version, revision):
 		tag = self.make_tag(version)
@@ -39,6 +41,16 @@ class GIT(SCM):
 			key_opts = []
 		self._run_check(['tag', '-s'] + key_opts + ['-m', 'Release %s' % version, tag, revision])
 		print "Tagged as %s" % tag
+	
+	def push_head_and_release(self, version):
+		child = self._run(['symbolic-ref', 'HEAD'], stdout = subprocess.PIPE)
+		stdout, unused = child.communicate()
+		if child.returncode:
+			print stdout
+			raise SafeException('Failed to get current branch! Exit code %d' % child.returncode)
+		current_branch = stdout.strip()
+		info("Current branch is %s", current_branch)
+		self._run_check(['push', self.options.public_scm_repository, self.make_tag(version), current_branch])
 	
 	def ensure_no_tag(self, version):
 		tag = self.make_tag(version)

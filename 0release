@@ -20,6 +20,7 @@ parser.add_option("", "--archive-dir-public-url", help="remote directory for rel
 parser.add_option("", "--master-feed-file", help="local file to extend with new releases", metavar='PATH')
 parser.add_option("", "--archive-upload-command", help="shell command to upload releases", metavar='COMMAND')
 parser.add_option("", "--master-feed-upload-command", help="shell command to upload feed", metavar='COMMAND')
+parser.add_option("", "--public-scm-repository", help="the name of the repository to push to", metavar='REPOS')
 parser.add_option("-V", "--version", help="display version information", action='store_true')
 
 (options, args) = parser.parse_args()
