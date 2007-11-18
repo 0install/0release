@@ -214,6 +214,22 @@ def do_release(local_iface, options):
 		members = [m for m in tar.getmembers() if m.name != 'pax_global_header']
 		tar.extractall('.', members = members)
 	
+	def export_changelog():
+		parsed_release_version = model.parse_version(status.release_version)
+
+		master = model.Interface(options.master_feed_file)
+		reader.update(master, master.uri, local = True)
+		versions = [impl.version for impl in master.implementations.values() if impl.version < parsed_release_version]
+		if not versions:
+			previous_release = None
+		else:
+			previous_release = model.format_version(max(versions))
+
+		changelog = file('changelog-%s' % status.release_version, 'w')
+		scm.export_changelog(previous_release, status.head_before_release, changelog)
+		changelog.close()
+		print "Wrote changelog from %s to here as %s" % (previous_release or 'start', changelog.name)
+	
 	def fail_candidate(archive_file):
 		backup_if_exists(archive_file)
 		head = scm.get_head_revision()
@@ -337,6 +353,8 @@ def do_release(local_iface, options):
 	# Unpack it again in case the unit-tests changed anything
 	shutil.rmtree(archive_name)
 	unpack_tarball(archive_file, archive_name)
+
+	export_changelog()
 
 	print "\nCandidate release archive:", archive_file
 	print "(extracted to %s for inspection)" % os.path.abspath(archive_name)

@@ -80,3 +80,6 @@ class GIT(SCM):
 		head = stdout.strip()
 		assert head
 		return head
+	
+	def export_changelog(self, last_release_version, head, stream):
+		self._run_check(['log', 'refs/tags/v' + last_release_version + '..' + head], stdout = stream)
