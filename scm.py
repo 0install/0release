@@ -31,7 +31,7 @@ class GIT(SCM):
 			raise SafeException('Uncommitted changes! Use "git-commit -a" to commit them. Changes are:\n' + stdout)
 	
 	def make_tag(self, version):
-		return 'refs/tags/v' + version
+		return 'v' + version
 
 	def tag(self, version, revision):
 		tag = self.make_tag(version)
