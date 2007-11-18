@@ -219,7 +219,7 @@ def do_release(local_iface, options):
 
 		previous_release = None
 		if os.path.exists(options.master_feed_file):
-			master = model.Interface(options.master_feed_file)
+			master = model.Interface(os.path.realpath(options.master_feed_file))
 			reader.update(master, master.uri, local = True)
 			versions = [impl.version for impl in master.implementations.values() if impl.version < parsed_release_version]
 			if versions:
