@@ -17,11 +17,11 @@
     <release:action phase="commit-release">sed -i &quot;s/^version = '.*'$/version = '$RELEASE_VERSION'/&quot; 0release</release:action>
   </release:management>
 
-  <group license="OSI Approved :: GNU Lesser General Public License (LGPL)" main="0release" self-test='tests/testrelease.py'>
+  <group license="OSI Approved :: GNU Lesser General Public License (LGPL)" main="0release" self-test="tests/testrelease.py">
     <requires interface="http://0install.net/2006/interfaces/0publish">
       <version not-before="0.13"/>
-      <environment insert="0publish" name="0PUBLISH" mode='replace'/>
+      <environment insert="0publish" mode="replace" name="0PUBLISH"/>
     </requires>
-    <implementation id="." version="0.3-post"/>
+    <implementation id="." released="2007-11-18" version="0.4"/>
   </group>
 </interface>
