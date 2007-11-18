@@ -12,6 +12,11 @@
 
   <feed-for interface="http://0install.net/2007/interfaces/0release.xml"/>
 
+  <release:management xmlns:release="http://zero-install.sourceforge.net/2007/namespaces/0release">
+    <!-- Update the copy of the version number -->
+    <release:action phase="commit-release">sed -i &quot;s/^version = '.*'$/version = '$RELEASE_VERSION'/&quot; 0release</release:action>
+  </release:management>
+
   <group license="OSI Approved :: GNU Lesser General Public License (LGPL)" main="0release">
     <requires interface="http://0install.net/2006/interfaces/0publish">
       <version not-before="0.13"/>
