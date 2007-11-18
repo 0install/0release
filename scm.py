@@ -5,8 +5,9 @@ import os, subprocess
 from zeroinstall import SafeException
 
 class SCM:
-	def __init__(self, local_iface):
+	def __init__(self, local_iface, options):
 		self.local_iface = local_iface
+		self.options = options
 
 class GIT(SCM):
 	def _run(self, args, **kwargs):
@@ -32,7 +33,11 @@ class GIT(SCM):
 
 	def tag(self, version, revision):
 		tag = self.make_tag(version)
-		self._run_check(['tag', tag, revision])
+		if self.options.key:
+			key_opts = ['-u', self.options.key]
+		else:
+			key_opts = []
+		self._run_check(['tag', '-s'] + key_opts + ['-m', 'Release %s' % version, tag, revision])
 		print "Tagged as %s" % tag
 	
 	def ensure_no_tag(self, version):

@@ -149,7 +149,7 @@ def do_release(local_iface, options):
 	else:
 		info("No <release:management> element found in local feed.")
 
-	scm = GIT(local_iface)
+	scm = GIT(local_iface, options)
 
 	def run_hooks(phase, cwd, env):
 		info("Running hooks for phase '%s'" % phase)
