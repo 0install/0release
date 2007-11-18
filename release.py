@@ -20,7 +20,7 @@ def run_unit_tests(impl):
 		return
 	self_test = os.path.join(impl.id, self_test)
 	print "Running self-test:", self_test
-	exitstatus = subprocess.call([self_test], cwd = impl.id)
+	exitstatus = subprocess.call([self_test], cwd = os.path.dirname(self_test))
 	if exitstatus:
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
 
@@ -139,7 +139,8 @@ def do_release(local_iface, options):
 		for x in release_management.childNodes:
 			if x.uri == XMLNS_RELEASE and x.name == 'action':
 				phase = x.getAttribute('phase')
-				assert phase in valid_phases, "Invalid action phase in " + x
+				if phase not in valid_phases:
+					raise SafeException("Invalid action phase '%s' in local feed %s. Valid actions are:\n%s" % (phase, local_iface.uri, '\n'.join(valid_phases)))
 				phase_actions[phase].append(x.content)
 			else:
 				warn("Unknown <release:management> element: %s", x)
@@ -326,6 +327,9 @@ def do_release(local_iface, options):
 		print "(leaving extracted directory for examination)"
 		fail_candidate(archive_file)
 		raise
+	# Unpack it again in case the unit-tests changed anything
+	shutil.rmtree(archive_name)
+	unpack_tarball(archive_file, archive_name)
 
 	print "\nCandidate release archive:", archive_file
 	print "(extracted to %s for inspection)" % os.path.abspath(archive_name)
