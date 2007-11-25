@@ -11,7 +11,7 @@ XMLNS_RELEASE = 'http://zero-install.sourceforge.net/2007/namespaces/0release'
 
 release_status_file = 'release-status'
 
-valid_phases = ['commit-release']
+valid_phases = ['commit-release', 'generate-archive']
 
 def run_unit_tests(impl):
 	self_test = impl.metadata.get('self-test', None)
@@ -332,6 +332,17 @@ def do_release(local_iface, options):
 	else:
 		backup_if_exists(archive_file)
 		scm.export(archive_name, archive_file)
+
+		if phase_actions['generate-archive']:
+			try:
+				unpack_tarball(archive_file, archive_name)
+				run_hooks('generate-archive', cwd = archive_name, env = {'RELEASE_VERSION': status.release_version})
+				info("Regenerating archive (may have been modified by generate-archive hooks...")
+				subprocess.check_call(['tar', 'cjf', archive_file, archive_name])
+			except SafeException:
+				fail_candidate(archive_file)
+				raise
+
 		status.created_archive = 'true'
 		status.save()
 
