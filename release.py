@@ -226,9 +226,15 @@ def do_release(local_iface, options):
 				previous_release = model.format_version(max(versions))
 
 		changelog = file('changelog-%s' % status.release_version, 'w')
-		scm.export_changelog(previous_release, status.head_before_release, changelog)
-		changelog.close()
-		print "Wrote changelog from %s to here as %s" % (previous_release or 'start', changelog.name)
+		try:
+			try:
+				scm.export_changelog(previous_release, status.head_before_release, changelog)
+			except SafeException, ex:
+				print "WARNING: Failed to generate changelog: " + str(ex)
+			else:
+				print "Wrote changelog from %s to here as %s" % (previous_release or 'start', changelog.name)
+		finally:
+			changelog.close()
 	
 	def fail_candidate(archive_file):
 		backup_if_exists(archive_file)
