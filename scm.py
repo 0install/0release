@@ -21,6 +21,13 @@ class GIT(SCM):
 		if code:
 			raise SafeException("Git %s failed with exit code %d" % (repr(args), code))
 
+	def _run_stdout(self, args, **kwargs):
+		child = self._run(args, stdout = subprocess.PIPE, **kwargs)
+		stdout, unused = child.communicate()
+		if child.returncode:
+			raise SafeException('Failed to get current branch! Exit code %d: %s' % (child.returncode, stdout))
+		return stdout
+
 	def reset_hard(self, revision):
 		self._run_check(['reset', '--hard', revision])
 
@@ -42,15 +49,16 @@ class GIT(SCM):
 		self._run_check(['tag', '-s'] + key_opts + ['-m', 'Release %s' % version, tag, revision])
 		print "Tagged as %s" % tag
 	
-	def push_head_and_release(self, version):
-		child = self._run(['symbolic-ref', 'HEAD'], stdout = subprocess.PIPE)
-		stdout, unused = child.communicate()
-		if child.returncode:
-			print stdout
-			raise SafeException('Failed to get current branch! Exit code %d' % child.returncode)
-		current_branch = stdout.strip()
+	def get_current_branch(self):
+		current_branch = self._run_stdout(['symbolic-ref', 'HEAD']).strip()
 		info("Current branch is %s", current_branch)
-		self._run_check(['push', self.options.public_scm_repository, self.make_tag(version), current_branch])
+		return current_branch
+	
+	def delete_branch(self, branch):
+		self._run_check(['branch', '-D', branch])
+
+	def push_head_and_release(self, version):
+		self._run_check(['push', self.options.public_scm_repository, self.make_tag(version), self.get_current_branch()])
 	
 	def ensure_no_tag(self, version):
 		tag = self.make_tag(version)
@@ -69,8 +77,15 @@ class GIT(SCM):
 				os.unlink(archive_file)
 			raise SafeException("git-archive failed with exit code %d" % status)
 	
-	def commit(self, message):
-		self._run_check(['commit', '-q', '-a', '-m', message])
+	def commit(self, message, branch, parent):
+		self._run_check(['add', '-u'])		# Commit all changed tracked files to index
+		tree = self._run_stdout(['write-tree']).strip()
+		child = self._run(['commit-tree', tree, '-p', parent], stdin = subprocess.PIPE, stdout = subprocess.PIPE)
+		stdout, unused = child.communicate(message)
+		commit = stdout.strip()
+		info("Committed as %s", commit)
+		self._run_check(['branch', '-f', branch, commit])
+		return commit
 	
 	def get_head_revision(self):
 		proc = self._run(['rev-parse', 'HEAD'], stdout = subprocess.PIPE)

@@ -75,3 +75,30 @@ def get_choice(*options):
 			if o.lower().startswith(choice):
 				return o
 
+class Status(object):
+	__slots__ = ['old_snapshot_version', 'release_version', 'head_before_release', 'new_snapshot_version', 'head_at_release', 'created_archive', 'tagged']
+	def __init__(self):
+		for name in self.__slots__:
+			setattr(self, name, None)
+
+		if os.path.isfile(release_status_file):
+			for line in file(release_status_file):
+				assert line.endswith('\n')
+				line = line[:-1]
+				name, value = line.split('=')
+				setattr(self, name, value)
+				info("Loaded status %s=%s", name, value)
+
+	def save(self):
+		tmp_name = release_status_file + '.new'
+		tmp = file(tmp_name, 'w')
+		try:
+			lines = ["%s=%s\n" % (name, getattr(self, name)) for name in self.__slots__ if getattr(self, name)]
+			tmp.write(''.join(lines))
+			tmp.close()
+			os.rename(tmp_name, release_status_file)
+			info("Wrote status to %s", release_status_file)
+		except:
+			os.unlink(tmp_name)
+			raise
+

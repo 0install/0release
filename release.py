@@ -15,6 +15,8 @@ release_status_file = 'release-status'
 
 valid_phases = ['commit-release', 'generate-archive']
 
+TMP_BRANCH_NAME = '0release-tmp'
+
 def run_unit_tests(impl):
 	self_test = impl.metadata.get('self-test', None)
 	if self_test is None:
@@ -117,8 +119,7 @@ def do_release(local_iface, options):
 
 		status.old_snapshot_version = local_impl.get_version()
 		status.release_version = release_version
-		scm.commit('Release %s' % release_version)
-		status.head_at_release = scm.get_head_revision()
+		status.head_at_release = scm.commit('Release %s' % release_version, branch = TMP_BRANCH_NAME, parent = 'HEAD')
 		status.save()
 
 		return release_version
@@ -126,7 +127,7 @@ def do_release(local_iface, options):
 	def set_to_snapshot(snapshot_version):
 		assert snapshot_version.endswith('-post')
 		support.publish(local_iface.uri, set_released = '', set_version = snapshot_version)
-		scm.commit('Start development series %s' % snapshot_version)
+		scm.commit('Start development series %s' % snapshot_version, branch = TMP_BRANCH_NAME, parent = TMP_BRANCH_NAME)
 		status.new_snapshot_version = scm.get_head_revision()
 		status.save()
 		
@@ -176,12 +177,7 @@ def do_release(local_iface, options):
 	
 	def fail_candidate(archive_file):
 		support.backup_if_exists(archive_file)
-		head = scm.get_head_revision()
-		if head != status.new_snapshot_version:
-			raise SafeException("There have been commits since starting the release! Please rebase them onto %s" % status.head_before_release)
-		# Check no uncommitted changes
-		scm.ensure_committed()
-		scm.reset_hard(status.head_before_release)
+		scm.delete_branch(TMP_BRANCH_NAME)
 		os.unlink(release_status_file)
 		print "Restored to state before starting release. Make your fixes and try again..."
 	
@@ -191,6 +187,8 @@ def do_release(local_iface, options):
 		if status.tagged:
 			print "Already tagged and added to master feed."
 		else:
+			scm.ensure_committed()
+
 			tar = tarfile.open(archive_file, 'r:bz2')
 			stream = tar.extractfile(tar.getmember(archive_name + '/' + local_iface_rel_path))
 			remote_dl_iface = create_feed(stream, archive_file, archive_name, version)
@@ -200,6 +198,8 @@ def do_release(local_iface, options):
 			remote_dl_iface.close()
 
 			scm.tag(status.release_version, status.head_at_release)
+			scm.reset_hard(TMP_BRANCH_NAME)
+			scm.delete_branch(TMP_BRANCH_NAME)
 
 			status.tagged = 'true'
 			status.save()
@@ -234,17 +234,17 @@ def do_release(local_iface, options):
 	if status.head_before_release:
 		head = scm.get_head_revision() 
 		if status.release_version:
-			print "RESUMING release of version %s" % status.release_version
+			print "RESUMING release of %s %s" % (local_iface.get_name(), status.release_version)
 		elif head == status.head_before_release:
-			print "Restarting release (HEAD revision has not changed)"
+			print "Restarting release of %s (HEAD revision has not changed)" % local_iface.get_name()
 		else:
 			raise SafeException("Something went wrong with the last run:\n" +
 					    "HEAD revision for last run was " + status.head_before_release + "\n" +
 					    "HEAD revision now is " + head + "\n" +
 					    "You should revert your working copy to the previous head and try again.\n" +
 					    "If you're sure you want to release from the current head, delete '" + release_status_file + "'")
-
-	print "Releasing", local_iface.get_name()
+	else:
+		print "Releasing", local_iface.get_name()
 
 	ensure_ready_to_release()
 
@@ -253,8 +253,12 @@ def do_release(local_iface, options):
 		need_set_snapshot = False
 		if status.new_snapshot_version:
 			head = scm.get_head_revision() 
-			if head != status.new_snapshot_version:
-				print "WARNING: there are more commits since we tagged; they will not be included in the release!"
+			if head != status.head_before_release:
+				raise SafeException("There are more commits since we started!\n"
+						    "HEAD was " + status.head_before_release + "\n"
+						    "HEAD now " + head + "\n"
+						    "To include them, delete '" + release_status_file + "' and try again.\n"
+						    "To leave them out, put them on a new branch and reset HEAD to the release version.")
 		else:
 			raise SafeException("Something went wrong previously when setting the new snapshot version.\n" +
 					    "Suggest you reset to the original HEAD of\n%s and delete '%s'." % (status.head_before_release, release_status_file))
@@ -286,6 +290,9 @@ def do_release(local_iface, options):
 
 	if need_set_snapshot:
 		set_to_snapshot(version + '-post')
+		# Revert back to the original revision, so that any fixes the user makes
+		# will get applied before the tag
+		scm.reset_hard(scm.get_current_branch())
 
 	#backup_if_exists(archive_name)
 	unpack_tarball(archive_file, archive_name)
