@@ -1,30 +1,34 @@
 #!/usr/bin/env python2.5
+# Copyright (C) 2007, Thomas Leonard
+# See the README file for details, or visit http://0install.net.
 import sys, os, shutil, tempfile, subprocess
 import unittest
 
 sys.path.insert(0, '..')
 
-mydir = os.path.dirname(__file__)
-release_feed = os.path.realpath(mydir + '/../0release.xml')
-test_repo = os.path.realpath(mydir + '/test-repo.tgz')
-test_gpg = os.path.realpath(mydir + '/gpg.tgz')
+import support
+
+mydir = os.path.realpath(os.path.dirname(__file__))
+release_feed = mydir + '/../0release.xml'
+test_repo = mydir + '/test-repo.tgz'
+test_gpg = mydir + '/gpg.tgz'
 
 class TestRelease(unittest.TestCase):
 	def setUp(self):
 		self.tmp = tempfile.mkdtemp(prefix = '0release-')
 		os.chdir(self.tmp)
-		subprocess.check_call(['tar', 'xzf', test_repo])
-		subprocess.check_call(['tar', 'xzf', test_gpg])
+		support.check_call(['tar', 'xzf', test_repo])
+		support.check_call(['tar', 'xzf', test_gpg])
 		os.mkdir('releases')
 		os.environ['GNUPGHOME'] = self.tmp + '/gpg'
 	
 	def tearDown(self):
-		os.chdir('/')
+		os.chdir(mydir)
 		shutil.rmtree(self.tmp)
 
 	def testSimple(self):
 		os.chdir('releases')
-		subprocess.check_call(['0launch', release_feed, '../hello/HelloWorld.xml'])
+		support.check_call(['0launch', release_feed, '../hello/HelloWorld.xml'])
 		assert os.path.isfile('make-release')
 
 		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE)

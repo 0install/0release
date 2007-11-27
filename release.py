@@ -5,6 +5,8 @@ import os, sys, subprocess, shutil, tarfile, tempfile
 from zeroinstall import SafeException
 from zeroinstall.injector import reader, model
 from logging import info
+
+import support
 from scm import GIT
 
 XMLNS_RELEASE = 'http://zero-install.sourceforge.net/2007/namespaces/0release'
@@ -23,62 +25,6 @@ def run_unit_tests(impl):
 	exitstatus = subprocess.call([self_test], cwd = os.path.dirname(self_test))
 	if exitstatus:
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
-
-def show_and_run(cmd, args):
-	print "Executing: %s %s" % (cmd, ' '.join("[%s]" % x for x in args))
-	subprocess.check_call(['sh', '-c', cmd, '-'] + args)
-
-def suggest_release_version(snapshot_version):
-	"""Given a snapshot version, suggest a suitable release version.
-	>>> suggest_release_version('1.0-pre')
-	'1.0'
-	>>> suggest_release_version('0.9-post')
-	'0.10'
-	>>> suggest_release_version('3')
-	Traceback (most recent call last):
-		...
-	SafeException: Version '3' is not a snapshot version (should end in -pre or -post)
-	"""
-	version = model.parse_version(snapshot_version)
-	mod = version[-1]
-	if mod == 0:
-		raise SafeException("Version '%s' is not a snapshot version (should end in -pre or -post)" % snapshot_version)
-	if mod > 0:
-		# -post, so increment the number
-		version[-2][-1] += 1
-	version[-1] = 0	# Remove the modifier
-	return model.format_version(version)
-
-def publish(iface, **kwargs):
-	args = [os.environ['0PUBLISH']]
-	for k in kwargs:
-		value = kwargs[k] 
-		if value is True:
-			args += ['--' + k.replace('_', '-')]
-		elif value is not None:
-			args += ['--' + k.replace('_', '-'), value]
-	args.append(iface)
-	info("Executing %s", args)
-	subprocess.check_call(args)
-
-def get_singleton_impl(iface):
-	impls = iface.implementations
-	if len(impls) != 1:
-		raise SafeException("Local feed '%s' contains %d versions! I need exactly one!" % (iface.uri, len(impls)))
-	return impls.values()[0]
-
-def backup_if_exists(name):
-	if not os.path.exists(name):
-		return
-	backup = name + '~'
-	if os.path.exists(backup):
-		print "(deleting old backup %s)" % backup
-		if os.path.isdir(backup):
-			shutil.rmtree(backup)
-		else:
-			os.unlink(backup)
-	os.rename(name, backup)
-	print "(renamed old %s as %s; will delete on next run)" % (name, backup)
 
 class Status(object):
 	__slots__ = ['old_snapshot_version', 'release_version', 'head_before_release', 'new_snapshot_version', 'head_at_release', 'created_archive', 'tagged']
@@ -107,17 +53,9 @@ class Status(object):
 			os.unlink(tmp_name)
 			raise
 
-def get_choice(*options):
-	while True:
-		choice = raw_input('/'.join(options) + ': ').lower()
-		if not choice: continue
-		for o in options:
-			if o.lower().startswith(choice):
-				return o
-
 def do_release(local_iface, options):
 	status = Status()
-	local_impl = get_singleton_impl(local_iface)
+	local_impl = support.get_singleton_impl(local_iface)
 
 	local_impl_dir = local_impl.id
 	assert local_impl_dir.startswith('/')
@@ -157,11 +95,11 @@ def do_release(local_iface, options):
 		full_env.update(env)
 		for x in phase_actions[phase]:
 			print "[%s]: %s" % (phase, x)
-			subprocess.check_call(x, shell = True, cwd = cwd, env = full_env)
+			support.check_call(x, shell = True, cwd = cwd, env = full_env)
 
 	def set_to_release():
 		print "Snapshot version is " + local_impl.get_version()
-		suggested = suggest_release_version(local_impl.get_version())
+		suggested = support.suggest_release_version(local_impl.get_version())
 		release_version = raw_input("Version number for new release [%s]: " % suggested)
 		if not release_version:
 			release_version = suggested
@@ -175,7 +113,7 @@ def do_release(local_iface, options):
 		run_hooks('commit-release', cwd = working_copy, env = {'RELEASE_VERSION': release_version})
 
 		print "Releasing version", release_version
-		publish(local_iface.uri, set_released = 'today', set_version = release_version)
+		support.publish(local_iface.uri, set_released = 'today', set_version = release_version)
 
 		status.old_snapshot_version = local_impl.get_version()
 		status.release_version = release_version
@@ -187,7 +125,7 @@ def do_release(local_iface, options):
 	
 	def set_to_snapshot(snapshot_version):
 		assert snapshot_version.endswith('-post')
-		publish(local_iface.uri, set_released = '', set_version = snapshot_version)
+		support.publish(local_iface.uri, set_released = '', set_version = snapshot_version)
 		scm.commit('Start development series %s' % snapshot_version)
 		status.new_snapshot_version = scm.get_head_revision()
 		status.save()
@@ -203,7 +141,7 @@ def do_release(local_iface, options):
 		shutil.copyfileobj(local_iface_stream, tmp)
 		tmp.flush()
 
-		publish(tmp.name,
+		support.publish(tmp.name,
 			archive_url = options.archive_dir_public_url + '/' + os.path.basename(archive_file),
 			archive_file = archive_file,
 			archive_extract = archive_name)
@@ -237,7 +175,7 @@ def do_release(local_iface, options):
 			changelog.close()
 	
 	def fail_candidate(archive_file):
-		backup_if_exists(archive_file)
+		support.backup_if_exists(archive_file)
 		head = scm.get_head_revision()
 		if head != status.new_snapshot_version:
 			raise SafeException("There have been commits since starting the release! Please rebase them onto %s" % status.head_before_release)
@@ -258,7 +196,7 @@ def do_release(local_iface, options):
 			remote_dl_iface = create_feed(stream, archive_file, archive_name, version)
 			stream.close()
 
-			publish(options.master_feed_file, local = remote_dl_iface.name, xmlsign = True, key = options.key)
+			support.publish(options.master_feed_file, local = remote_dl_iface.name, xmlsign = True, key = options.key)
 			remote_dl_iface.close()
 
 			scm.tag(status.release_version, status.head_at_release)
@@ -270,7 +208,7 @@ def do_release(local_iface, options):
 		print "Upload %s as %s" % (archive_file, options.archive_dir_public_url + '/' + os.path.basename(archive_file))
 		cmd = options.archive_upload_command.strip()
 		if cmd:
-			show_and_run(cmd, [archive_file])
+			support.show_and_run(cmd, [archive_file])
 		else:
 			print "NOTE: No upload command set => you'll have to upload it yourself!"
 
@@ -280,7 +218,7 @@ def do_release(local_iface, options):
 		print "Upload %s into %s" % (', '.join(feed_files), feed_base)
 		cmd = options.master_feed_upload_command.strip()
 		if cmd:
-			show_and_run(cmd, feed_files)
+			support.show_and_run(cmd, feed_files)
 		else:
 			print "NOTE: No feed upload command set => you'll have to upload them yourself!"
 
@@ -330,7 +268,7 @@ def do_release(local_iface, options):
 	if status.created_archive and os.path.isfile(archive_file):
 		print "Archive already created"
 	else:
-		backup_if_exists(archive_file)
+		support.backup_if_exists(archive_file)
 		scm.export(archive_name, archive_file)
 
 		if phase_actions['generate-archive']:
@@ -338,7 +276,7 @@ def do_release(local_iface, options):
 				unpack_tarball(archive_file, archive_name)
 				run_hooks('generate-archive', cwd = archive_name, env = {'RELEASE_VERSION': status.release_version})
 				info("Regenerating archive (may have been modified by generate-archive hooks...")
-				subprocess.check_call(['tar', 'cjf', archive_file, archive_name])
+				support.check_call(['tar', 'cjf', archive_file, archive_name])
 			except SafeException:
 				fail_candidate(archive_file)
 				raise
@@ -359,7 +297,7 @@ def do_release(local_iface, options):
 	extracted_iface_path = os.path.abspath(os.path.join(archive_name, local_iface_rel_path))
 	extracted_iface = model.Interface(extracted_iface_path)
 	reader.update(extracted_iface, extracted_iface_path, local = True)
-	extracted_impl = get_singleton_impl(extracted_iface)
+	extracted_impl = support.get_singleton_impl(extracted_iface)
 
 	try:
 		run_unit_tests(extracted_impl)
@@ -380,7 +318,7 @@ def do_release(local_iface, options):
 	print "P) Publish candidate (accept)"
 	print "F) Fail candidate (untag)"
 	print "(you can also hit CTRL-C and resume this script when done)"
-	choice = get_choice('Publish', 'Fail')
+	choice = support.get_choice('Publish', 'Fail')
 
 	info("Deleting extracted archive %s", archive_name)
 	shutil.rmtree(archive_name)
@@ -390,8 +328,3 @@ def do_release(local_iface, options):
 	else:
 		assert choice == 'Fail'
 		fail_candidate(archive_file)
-
-
-if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
