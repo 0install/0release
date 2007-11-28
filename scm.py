@@ -75,8 +75,8 @@ class GIT(SCM):
 			raise SafeException(("Release %s is already tagged! If you want to replace it, do\n" + 
 						"git-tag -d %s") % (version, tag))
 	
-	def export(self, prefix, archive_file):
-		child = self._run(['archive', '--format=tar', '--prefix=' + prefix + '/', 'HEAD'], stdout = subprocess.PIPE)
+	def export(self, prefix, archive_file, revision):
+		child = self._run(['archive', '--format=tar', '--prefix=' + prefix + '/', revision], stdout = subprocess.PIPE)
 		subprocess.check_call(['bzip2', '-'], stdin = child.stdout, stdout = file(archive_file, 'w'))
 		status = child.wait()
 		if status:

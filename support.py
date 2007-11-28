@@ -67,13 +67,30 @@ def backup_if_exists(name):
 	os.rename(name, backup)
 	print "(renamed old %s as %s; will delete on next run)" % (name, backup)
 
-def get_choice(*options):
+def get_choice(options):
 	while True:
 		choice = raw_input('/'.join(options) + ': ').lower()
 		if not choice: continue
 		for o in options:
 			if o.lower().startswith(choice):
 				return o
+
+def make_archive_name(feed_name, version):
+	return feed_name.lower().replace(' ', '-') + '-' + version
+
+def in_PATH(prog):
+	for x in os.environ['PATH'].split(':'):
+		if os.path.isfile(os.path.join(x, prog)):
+			return True
+	return False
+
+def show_diff(from_dir, to_dir):
+	for cmd in [['meld'], ['xxdiff'], ['diff', '-ur']]:
+		if in_PATH(cmd[0]):
+			code = os.spawnvp(os.P_WAIT, cmd[0], cmd + [from_dir, to_dir])
+			if code:
+				print "WARNING: command %s failed with exit code %d" % (cmd, code)
+			return
 
 class Status(object):
 	__slots__ = ['old_snapshot_version', 'release_version', 'head_before_release', 'new_snapshot_version', 'head_at_release', 'created_archive', 'tagged']
@@ -101,4 +118,3 @@ class Status(object):
 		except:
 			os.unlink(tmp_name)
 			raise
-

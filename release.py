@@ -121,8 +121,6 @@ def do_release(local_iface, options):
 		status.release_version = release_version
 		status.head_at_release = scm.commit('Release %s' % release_version, branch = TMP_BRANCH_NAME, parent = 'HEAD')
 		status.save()
-
-		return release_version
 	
 	def set_to_snapshot(snapshot_version):
 		assert snapshot_version.endswith('-post')
@@ -138,7 +136,7 @@ def do_release(local_iface, options):
 		# Not needed for GIT. For SCMs where tagging is expensive (e.g. svn) this might be useful.
 		#run_unit_tests(local_impl)
 	
-	def create_feed(local_iface_stream, archive_file, archive_name, version):
+	def create_feed(local_iface_stream, archive_file, archive_name):
 		tmp = tempfile.NamedTemporaryFile(prefix = '0release-')
 		shutil.copyfileobj(local_iface_stream, tmp)
 		tmp.flush()
@@ -154,17 +152,20 @@ def do_release(local_iface, options):
 		members = [m for m in tar.getmembers() if m.name != 'pax_global_header']
 		tar.extractall('.', members = members)
 	
-	def export_changelog():
-		parsed_release_version = model.parse_version(status.release_version)
+	def get_previous_release(this_version):
+		"""Return the highest numbered verison in the master feed before this_version.
+		@return: version, or None if there wasn't one"""
+		parsed_release_version = model.parse_version(this_version)
 
-		previous_release = None
 		if os.path.exists(options.master_feed_file):
 			master = model.Interface(os.path.realpath(options.master_feed_file))
 			reader.update(master, master.uri, local = True)
 			versions = [impl.version for impl in master.implementations.values() if impl.version < parsed_release_version]
 			if versions:
-				previous_release = model.format_version(max(versions))
+				return model.format_version(max(versions))
+		return None
 
+	def export_changelog(previous_release = None):
 		changelog = file('changelog-%s' % status.release_version, 'w')
 		try:
 			try:
@@ -185,6 +186,12 @@ def do_release(local_iface, options):
 	def accept_and_publish(archive_file, archive_name, local_iface_rel_path):
 		assert options.master_feed_file
 
+		master = model.Interface(os.path.realpath(options.master_feed_file))
+		reader.update(master, master.uri, local = True)
+		existing_releases = [impl for impl in master.implementations.values() if impl.get_version() == status.release_version]
+		if len(existing_releases):
+			raise SafeException("Master feed %s already contains an implementation with version number %s!" % (options.master_feed_file, status.release_version))
+
 		if status.tagged:
 			print "Already tagged and added to master feed."
 		else:
@@ -197,7 +204,7 @@ def do_release(local_iface, options):
 
 			tar = tarfile.open(archive_file, 'r:bz2')
 			stream = tar.extractfile(tar.getmember(archive_name + '/' + local_iface_rel_path))
-			remote_dl_iface = create_feed(stream, archive_file, archive_name, version)
+			remote_dl_iface = create_feed(stream, archive_file, archive_name)
 			stream.close()
 
 			support.publish(options.master_feed_file, local = remote_dl_iface.name, xmlsign = True, key = options.key)
@@ -255,7 +262,6 @@ def do_release(local_iface, options):
 	ensure_ready_to_release()
 
 	if status.release_version:
-		version = status.release_version
 		need_set_snapshot = False
 		if status.new_snapshot_version:
 			head = scm.get_head_revision() 
@@ -269,17 +275,18 @@ def do_release(local_iface, options):
 			raise SafeException("Something went wrong previously when setting the new snapshot version.\n" +
 					    "Suggest you reset to the original HEAD of\n%s and delete '%s'." % (status.head_before_release, release_status_file))
 	else:
-		version = set_to_release()
+		set_to_release()
+		assert status.release_version
 		need_set_snapshot = True
 
-	archive_name = local_iface.get_name().lower().replace(' ', '-') + '-' + version
+	archive_name = support.make_archive_name(local_iface.get_name(), status.release_version)
 	archive_file = archive_name + '.tar.bz2'
 
 	if status.created_archive and os.path.isfile(archive_file):
 		print "Archive already created"
 	else:
 		support.backup_if_exists(archive_file)
-		scm.export(archive_name, archive_file)
+		scm.export(archive_name, archive_file, status.head_at_release)
 
 		if phase_actions['generate-archive']:
 			try:
@@ -295,7 +302,7 @@ def do_release(local_iface, options):
 		status.save()
 
 	if need_set_snapshot:
-		set_to_snapshot(version + '-post')
+		set_to_snapshot(status.release_version + '-post')
 		# Revert back to the original revision, so that any fixes the user makes
 		# will get applied before the tag
 		scm.reset_hard(scm.get_current_branch())
@@ -323,6 +330,7 @@ def do_release(local_iface, options):
 	shutil.rmtree(archive_name)
 	unpack_tarball(archive_file, archive_name)
 
+	previous_release = get_previous_release(status.release_version)
 	export_changelog()
 
 	print "\nCandidate release archive:", archive_file
@@ -331,8 +339,29 @@ def do_release(local_iface, options):
 	print "\nPlease check candidate and select an action:"
 	print "P) Publish candidate (accept)"
 	print "F) Fail candidate (untag)"
+	if previous_release:
+		print "D) Diff against release archive for %s" % previous_release
+		maybe_diff = ['Diff']
+	else:
+		maybe_diff = []
 	print "(you can also hit CTRL-C and resume this script when done)"
-	choice = support.get_choice('Publish', 'Fail')
+
+	while True:
+		choice = support.get_choice(['Publish', 'Fail'] + maybe_diff)
+		if choice == 'Diff':
+			previous_archive_name = support.make_archive_name(local_iface.get_name(), previous_release)
+			previous_archive_file = previous_archive_name + '.tar.bz2'
+			if os.path.isfile(previous_archive_file):
+				unpack_tarball(previous_archive_file, previous_archive_name)
+				try:
+					support.show_diff(previous_archive_name, archive_name)
+				finally:
+					shutil.rmtree(previous_archive_name)
+			else:
+				# TODO: download it?
+				print "Sorry, archive file %s not found! Can't show diff." % previous_archive_file
+		else:
+			break
 
 	info("Deleting extracted archive %s", archive_name)
 	shutil.rmtree(archive_name)
