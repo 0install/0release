@@ -189,6 +189,11 @@ def do_release(local_iface, options):
 			print "Already tagged and added to master feed."
 		else:
 			scm.ensure_committed()
+			head = scm.get_head_revision() 
+			if head != status.head_before_release:
+				raise SafeException("Changes committed since we started!\n" +
+						    "HEAD was " + status.head_before_release + "\n"
+						    "HEAD now " + head)
 
 			tar = tarfile.open(archive_file, 'r:bz2')
 			stream = tar.extractfile(tar.getmember(archive_name + '/' + local_iface_rel_path))
