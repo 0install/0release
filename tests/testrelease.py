@@ -31,12 +31,18 @@ class TestRelease(unittest.TestCase):
 		support.check_call(['0launch', release_feed, '../hello/HelloWorld.xml'])
 		assert os.path.isfile('make-release')
 
+		lines = file('make-release').readlines()
+		lines[lines.index('ARCHIVE_DIR_PUBLIC_URL=\n')] = 'ARCHIVE_DIR_PUBLIC_URL=http://TESTING/releases\n'
+		s = file('make-release', 'w')
+		s.write(''.join(lines))
+		s.close()
+
 		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE)
-		unused, unused = child.communicate('\nP\n')
+		unused, unused = child.communicate('\nP\n\n')
 		assert child.returncode == 0
 
 		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE)
-		unused, unused = child.communicate('\nP\n')
+		unused, unused = child.communicate('\nP\n\n')
 		assert child.returncode == 0
 
 		assert 'Prints "Hello World"' in file('changelog-0.1').read()

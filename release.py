@@ -101,6 +101,9 @@ def do_release(local_iface, options):
 		status.save()
 		
 	def ensure_ready_to_release():
+		if not options.master_feed_file:
+			raise SafeException("Master feed file not set! Check your configuration")
+
 		scm.ensure_committed()
 		scm.ensure_versioned(local_iface_rel_path)
 		info("No uncommitted changes. Good.")
@@ -136,7 +139,7 @@ def do_release(local_iface, options):
 				return model.format_version(max(versions))
 		return None
 
-	def export_changelog(previous_release = None):
+	def export_changelog(previous_release):
 		changelog = file('changelog-%s' % status.release_version, 'w')
 		try:
 			try:
@@ -180,11 +183,13 @@ def do_release(local_iface, options):
 		if status.updated_master_feed:
 			print "Already added to master feed. Not changing."
 		else:
-			master = model.Interface(os.path.realpath(options.master_feed_file))
-			reader.update(master, master.uri, local = True)
-			existing_releases = [impl for impl in master.implementations.values() if impl.get_version() == status.release_version]
-			if len(existing_releases):
-				raise SafeException("Master feed %s already contains an implementation with version number %s!" % (options.master_feed_file, status.release_version))
+			if os.path.exists(options.master_feed_file):
+				# Check we haven't already released this version
+				master = model.Interface(os.path.realpath(options.master_feed_file))
+				reader.update(master, master.uri, local = True)
+				existing_releases = [impl for impl in master.implementations.values() if impl.get_version() == status.release_version]
+				if len(existing_releases):
+					raise SafeException("Master feed %s already contains an implementation with version number %s!" % (options.master_feed_file, status.release_version))
 
 			tar = tarfile.open(archive_file, 'r:bz2')
 			stream = tar.extractfile(tar.getmember(archive_name + '/' + local_iface_rel_path))
@@ -198,6 +203,9 @@ def do_release(local_iface, options):
 			status.save()
 
 		def is_uploaded(url, size):
+			if url.startswith('http://TESTING/releases'):
+				return True
+
 			try:
 				actual_size = support.get_size(url)
 			except Exception, ex:
@@ -342,7 +350,7 @@ def do_release(local_iface, options):
 	unpack_tarball(archive_file, archive_name)
 
 	previous_release = get_previous_release(status.release_version)
-	export_changelog()
+	export_changelog(previous_release)
 
 	print "\nCandidate release archive:", archive_file
 	print "(extracted to %s for inspection)" % os.path.abspath(archive_name)
