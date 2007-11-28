@@ -2,9 +2,12 @@
 # See the README file for details, or visit http://0install.net.
 
 import os, subprocess, shutil
+import urlparse, ftplib, httplib
 from zeroinstall import SafeException
 from zeroinstall.injector import model
 from logging import info
+
+release_status_file = 'release-status'
 
 def check_call(*args, **kwargs):
 	exitstatus = subprocess.call(*args, **kwargs)
@@ -93,7 +96,7 @@ def show_diff(from_dir, to_dir):
 			return
 
 class Status(object):
-	__slots__ = ['old_snapshot_version', 'release_version', 'head_before_release', 'new_snapshot_version', 'head_at_release', 'created_archive', 'tagged']
+	__slots__ = ['old_snapshot_version', 'release_version', 'head_before_release', 'new_snapshot_version', 'head_at_release', 'created_archive', 'tagged', 'uploaded_archive']
 	def __init__(self):
 		for name in self.__slots__:
 			setattr(self, name, None)
@@ -118,3 +121,69 @@ class Status(object):
 		except:
 			os.unlink(tmp_name)
 			raise
+
+def host(address):
+	if hasattr(address, 'hostname'):
+		return address.hostname
+	else:
+		return address[1].split(':', 1)[0]
+
+def port(address):
+	if hasattr(address, 'port'):
+		return address.port
+	else:
+		port = address[1].split(':', 1)[1:]
+		if port:
+			return int(port[0])
+		else:
+			return None
+
+def get_http_size(url, ttl = 1):
+	assert url.lower().startswith('http://')
+
+	address = urlparse.urlparse(url)
+	http = httplib.HTTPConnection(host(address), port(address) or 80)
+
+	parts = url.split('/', 3)
+	if len(parts) == 4:
+		path = parts[3]
+	else:
+		path = ''
+
+	http.request('HEAD', '/' + path, headers = {'Host': host(address)})
+	response = http.getresponse()
+	try:
+		if response.status == 200:
+			return response.getheader('Content-Length')
+		elif response.status in (301, 302):
+			new_url_rel = response.getheader('Location') or response.getheader('URI')
+			new_url = urlparse.urljoin(url, new_url_rel)
+		else:
+			raise SafeException("HTTP error: got status code %s" % response.status)
+	finally:
+		response.close()
+
+	if ttl:
+		info("Resource moved! Checking new URL %s" % new_url)
+		assert new_url
+		return get_http_size(new_url, ttl - 1)
+	else:
+		raise SafeException('Too many redirections.')
+
+def get_ftp_size(url):
+	address = urlparse.urlparse(url)
+	ftp = ftplib.FTP(host(address))
+	try:
+		ftp.login()
+		return ftp.size(url.split('/', 3)[3])
+	finally:
+		ftp.close()
+
+def get_size(url):
+	scheme = urlparse.urlparse(url)[0].lower()
+	if scheme.startswith('http'):
+		return get_http_size(url)
+	elif scheme.startswith('ftp'):
+		return get_ftp_size(url)
+	else:
+		raise SafeException("Unknown scheme '%s' in '%s'" % (scheme, url))

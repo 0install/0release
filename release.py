@@ -11,8 +11,6 @@ from scm import GIT
 
 XMLNS_RELEASE = 'http://zero-install.sourceforge.net/2007/namespaces/0release'
 
-release_status_file = 'release-status'
-
 valid_phases = ['commit-release', 'generate-archive']
 
 TMP_BRANCH_NAME = '0release-tmp'
@@ -28,35 +26,8 @@ def run_unit_tests(impl):
 	if exitstatus:
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
 
-class Status(object):
-	__slots__ = ['old_snapshot_version', 'release_version', 'head_before_release', 'new_snapshot_version', 'head_at_release', 'created_archive', 'tagged']
-	def __init__(self):
-		for name in self.__slots__:
-			setattr(self, name, None)
-
-		if os.path.isfile(release_status_file):
-			for line in file(release_status_file):
-				assert line.endswith('\n')
-				line = line[:-1]
-				name, value = line.split('=')
-				setattr(self, name, value)
-				info("Loaded status %s=%s", name, value)
-
-	def save(self):
-		tmp_name = release_status_file + '.new'
-		tmp = file(tmp_name, 'w')
-		try:
-			lines = ["%s=%s\n" % (name, getattr(self, name)) for name in self.__slots__ if getattr(self, name)]
-			tmp.write(''.join(lines))
-			tmp.close()
-			os.rename(tmp_name, release_status_file)
-			info("Wrote status to %s", release_status_file)
-		except:
-			os.unlink(tmp_name)
-			raise
-
 def do_release(local_iface, options):
-	status = Status()
+	status = support.Status()
 	local_impl = support.get_singleton_impl(local_iface)
 
 	local_impl_dir = local_impl.id
@@ -180,11 +151,14 @@ def do_release(local_iface, options):
 	def fail_candidate(archive_file):
 		support.backup_if_exists(archive_file)
 		scm.delete_branch(TMP_BRANCH_NAME)
-		os.unlink(release_status_file)
+		os.unlink(support.release_status_file)
 		print "Restored to state before starting release. Make your fixes and try again..."
 	
 	def accept_and_publish(archive_file, archive_name, local_iface_rel_path):
 		assert options.master_feed_file
+
+		if not options.archive_dir_public_url:
+			raise SafeException("Archive directory public URL is not set! Edit configuration and try again.")
 
 		master = model.Interface(os.path.realpath(options.master_feed_file))
 		reader.update(master, master.uri, local = True)
@@ -217,13 +191,42 @@ def do_release(local_iface, options):
 			status.tagged = 'true'
 			status.save()
 
+		def is_uploaded(url, size):
+			try:
+				actual_size = support.get_size(url)
+			except Exception, ex:
+				print "Can't get size of '%s': %s" % (url, ex)
+				return False
+			else:
+				if int(actual_size) == size:
+					return True
+				print "WARNING: %s exists, but size is %d, not %d!" % (url, actual_size, size)
+				return False
+
 		# Copy files...
-		print "Upload %s as %s" % (archive_file, options.archive_dir_public_url + '/' + os.path.basename(archive_file))
-		cmd = options.archive_upload_command.strip()
-		if cmd:
-			support.show_and_run(cmd, [archive_file])
+		print
+		archive_url = options.archive_dir_public_url + '/' + os.path.basename(archive_file)
+		archive_size = os.path.getsize(archive_file)
+		if status.uploaded_archive and is_uploaded(archive_url, archive_size):
+			print "Archive already uploaded. Not uploading again."
 		else:
-			print "NOTE: No upload command set => you'll have to upload it yourself!"
+			while True:
+				print "Upload %s as %s" % (archive_file, archive_url)
+				cmd = options.archive_upload_command.strip()
+				if cmd:
+					support.show_and_run(cmd, [archive_file])
+				else:
+					print "No upload command is set => please upload the archive manually now"
+					raw_input('Press Return once archive is uploaded.')
+				print
+				if is_uploaded(archive_url, archive_size):
+					print "OK, archive uploaded successfull"
+					status.uploaded_archive = 'true'
+					status.save()
+					break
+				print "** Archive still not uploaded! Try again..."
+				if cmd:
+					raw_input('Press Return to retry upload command.')
 
 		assert len(local_iface.feed_for) == 1
 		feed_base = os.path.dirname(local_iface.feed_for.keys()[0])
@@ -242,7 +245,7 @@ def do_release(local_iface, options):
 		else:
 			print "NOTE: No public repository set => you'll have to push the tag and trunk yourself."
 
-		os.unlink(release_status_file)
+		os.unlink(support.release_status_file)
 	
 	if status.head_before_release:
 		head = scm.get_head_revision() 
@@ -255,7 +258,7 @@ def do_release(local_iface, options):
 					    "HEAD revision for last run was " + status.head_before_release + "\n" +
 					    "HEAD revision now is " + head + "\n" +
 					    "You should revert your working copy to the previous head and try again.\n" +
-					    "If you're sure you want to release from the current head, delete '" + release_status_file + "'")
+					    "If you're sure you want to release from the current head, delete '" + support.release_status_file + "'")
 	else:
 		print "Releasing", local_iface.get_name()
 
@@ -263,17 +266,19 @@ def do_release(local_iface, options):
 
 	if status.release_version:
 		need_set_snapshot = False
-		if status.new_snapshot_version:
+		if status.tagged:
+			print "Already tagged. Resuming the publishing process..."
+		elif status.new_snapshot_version:
 			head = scm.get_head_revision() 
 			if head != status.head_before_release:
 				raise SafeException("There are more commits since we started!\n"
 						    "HEAD was " + status.head_before_release + "\n"
 						    "HEAD now " + head + "\n"
-						    "To include them, delete '" + release_status_file + "' and try again.\n"
+						    "To include them, delete '" + support.release_status_file + "' and try again.\n"
 						    "To leave them out, put them on a new branch and reset HEAD to the release version.")
 		else:
 			raise SafeException("Something went wrong previously when setting the new snapshot version.\n" +
-					    "Suggest you reset to the original HEAD of\n%s and delete '%s'." % (status.head_before_release, release_status_file))
+					    "Suggest you reset to the original HEAD of\n%s and delete '%s'." % (status.head_before_release, support.release_status_file))
 	else:
 		set_to_release()
 		assert status.release_version
