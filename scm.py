@@ -27,6 +27,13 @@ class GIT(SCM):
 		if child.returncode:
 			raise SafeException('Failed to get current branch! Exit code %d: %s' % (child.returncode, stdout))
 		return stdout
+	
+	def ensure_versioned(self, path):
+		"""Ensure path is a file tracked by the version control system.
+		@raise SafeException: if file is not tracked"""
+		out = self._run_stdout(['ls-tree', 'HEAD', path]).strip()
+		if not out:
+			raise SafeException("File '%s' is not under version control, according to git-ls-tree" % path)
 
 	def reset_hard(self, revision):
 		self._run_check(['reset', '--hard', revision])

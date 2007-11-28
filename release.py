@@ -133,6 +133,7 @@ def do_release(local_iface, options):
 		
 	def ensure_ready_to_release():
 		scm.ensure_committed()
+		scm.ensure_versioned(local_iface_rel_path)
 		info("No uncommitted changes. Good.")
 		# Not needed for GIT. For SCMs where tagging is expensive (e.g. svn) this might be useful.
 		#run_unit_tests(local_impl)
@@ -302,6 +303,7 @@ def do_release(local_iface, options):
 			raise SafeException("Main executable '%s' not found after unpacking archive!" % main)
 
 	extracted_iface_path = os.path.abspath(os.path.join(archive_name, local_iface_rel_path))
+	assert os.path.isfile(extracted_iface_path), "Local feed not in archive! Is it under version control?"
 	extracted_iface = model.Interface(extracted_iface_path)
 	reader.update(extracted_iface, extracted_iface_path, local = True)
 	extracted_impl = support.get_singleton_impl(extracted_iface)
