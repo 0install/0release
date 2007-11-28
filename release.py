@@ -160,14 +160,8 @@ def do_release(local_iface, options):
 		if not options.archive_dir_public_url:
 			raise SafeException("Archive directory public URL is not set! Edit configuration and try again.")
 
-		master = model.Interface(os.path.realpath(options.master_feed_file))
-		reader.update(master, master.uri, local = True)
-		existing_releases = [impl for impl in master.implementations.values() if impl.get_version() == status.release_version]
-		if len(existing_releases):
-			raise SafeException("Master feed %s already contains an implementation with version number %s!" % (options.master_feed_file, status.release_version))
-
 		if status.tagged:
-			print "Already tagged and added to master feed."
+			print "Already tagged in SCM. Not re-tagging."
 		else:
 			scm.ensure_committed()
 			head = scm.get_head_revision() 
@@ -175,6 +169,22 @@ def do_release(local_iface, options):
 				raise SafeException("Changes committed since we started!\n" +
 						    "HEAD was " + status.head_before_release + "\n"
 						    "HEAD now " + head)
+
+			scm.tag(status.release_version, status.head_at_release)
+			scm.reset_hard(TMP_BRANCH_NAME)
+			scm.delete_branch(TMP_BRANCH_NAME)
+
+			status.tagged = 'true'
+			status.save()
+
+		if status.updated_master_feed:
+			print "Already added to master feed. Not changing."
+		else:
+			master = model.Interface(os.path.realpath(options.master_feed_file))
+			reader.update(master, master.uri, local = True)
+			existing_releases = [impl for impl in master.implementations.values() if impl.get_version() == status.release_version]
+			if len(existing_releases):
+				raise SafeException("Master feed %s already contains an implementation with version number %s!" % (options.master_feed_file, status.release_version))
 
 			tar = tarfile.open(archive_file, 'r:bz2')
 			stream = tar.extractfile(tar.getmember(archive_name + '/' + local_iface_rel_path))
@@ -184,11 +194,7 @@ def do_release(local_iface, options):
 			support.publish(options.master_feed_file, local = remote_dl_iface.name, xmlsign = True, key = options.key)
 			remote_dl_iface.close()
 
-			scm.tag(status.release_version, status.head_at_release)
-			scm.reset_hard(TMP_BRANCH_NAME)
-			scm.delete_branch(TMP_BRANCH_NAME)
-
-			status.tagged = 'true'
+			status.updated_master_feed = 'true'
 			status.save()
 
 		def is_uploaded(url, size):
@@ -220,7 +226,7 @@ def do_release(local_iface, options):
 					raw_input('Press Return once archive is uploaded.')
 				print
 				if is_uploaded(archive_url, archive_size):
-					print "OK, archive uploaded successfull"
+					print "OK, archive uploaded successfully"
 					status.uploaded_archive = 'true'
 					status.save()
 					break
