@@ -108,3 +108,15 @@ class GIT(SCM):
 			self._run_check(['log', 'refs/tags/v' + last_release_version + '..' + head], stdout = stream)
 		else:
 			self._run_check(['log', head], stdout = stream)
+
+
+def get_scm(local_iface, options):
+	start_dir = os.path.dirname(os.path.abspath(local_iface.uri))
+	current = start_dir
+	while True:
+		if os.path.exists(os.path.join(current, '.git')):
+			return GIT(local_iface, options)
+		parent = os.path.dirname(current)
+		if parent == current:
+			raise SafeException("Unable to determine which version control system is being used. Couldn't find .git in %s or any parent directory." % start_dir)
+		current = parent

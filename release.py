@@ -7,7 +7,7 @@ from zeroinstall.injector import reader, model
 from logging import info
 
 import support
-from scm import GIT
+from scm import get_scm
 
 XMLNS_RELEASE = 'http://zero-install.sourceforge.net/2007/namespaces/0release'
 
@@ -60,7 +60,7 @@ def do_release(local_iface, options):
 	else:
 		info("No <release:management> element found in local feed.")
 
-	scm = GIT(local_iface, options)
+	scm = get_scm(local_iface, options)
 
 	def run_hooks(phase, cwd, env):
 		info("Running hooks for phase '%s'" % phase)
