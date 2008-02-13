@@ -109,6 +109,8 @@ class GIT(SCM):
 		else:
 			self._run_check(['log', head], stdout = stream)
 
+	def grep(self, pattern):
+		self._run_check(['grep', pattern])
 
 def get_scm(local_iface, options):
 	start_dir = os.path.dirname(os.path.abspath(local_iface.uri))

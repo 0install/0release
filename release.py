@@ -109,6 +109,8 @@ def do_release(local_iface, options):
 		info("No uncommitted changes. Good.")
 		# Not needed for GIT. For SCMs where tagging is expensive (e.g. svn) this might be useful.
 		#run_unit_tests(local_impl)
+
+		scm.grep('\(^\\|[^=]\)\<\\(TODO\\|XXX\\|FIXME\\)\>')
 	
 	def create_feed(local_iface_stream, archive_file, archive_name):
 		tmp = tempfile.NamedTemporaryFile(prefix = '0release-')
