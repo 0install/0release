@@ -6,14 +6,14 @@ from zeroinstall import SafeException
 from logging import info
 
 class SCM:
-	def __init__(self, local_iface, options):
-		self.local_iface = local_iface
+	def __init__(self, root_dir, options):
 		self.options = options
+		self.root_dir = root_dir
 
 class GIT(SCM):
 	def _run(self, args, **kwargs):
 		info("Running git %s", ' '.join(args))
-		return subprocess.Popen(["git"] + args, cwd = os.path.dirname(self.local_iface.uri), **kwargs)
+		return subprocess.Popen(["git"] + args, cwd = self.root_dir, **kwargs)
 	
 	def _run_check(self, args, **kwargs):
 		child = self._run(args, **kwargs)
@@ -117,7 +117,7 @@ def get_scm(local_iface, options):
 	current = start_dir
 	while True:
 		if os.path.exists(os.path.join(current, '.git')):
-			return GIT(local_iface, options)
+			return GIT(current, options)
 		parent = os.path.dirname(current)
 		if parent == current:
 			raise SafeException("Unable to determine which version control system is being used. Couldn't find .git in %s or any parent directory." % start_dir)
