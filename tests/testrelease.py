@@ -21,6 +21,7 @@ class TestRelease(unittest.TestCase):
 		support.check_call(['tar', 'xzf', test_gpg])
 		os.mkdir('releases')
 		os.environ['GNUPGHOME'] = self.tmp + '/gpg'
+		os.chmod(os.environ['GNUPGHOME'], 0700)
 	
 	def tearDown(self):
 		os.chdir(mydir)
