@@ -69,9 +69,9 @@ class GIT(SCM):
 	
 	def ensure_no_tag(self, version):
 		tag = self.make_tag(version)
-		child = self._run(['tag', '-l', '-q', tag])
-		code = child.wait()
-		if code == 0:
+		child = self._run(['tag', '-l', tag], stdout = subprocess.PIPE)
+		stdout, unused = child.communicate()
+		if tag in stdout.split('\n'):
 			raise SafeException(("Release %s is already tagged! If you want to replace it, do\n" + 
 						"git-tag -d %s") % (version, tag))
 	
