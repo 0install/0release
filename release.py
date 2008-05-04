@@ -209,12 +209,12 @@ def do_release(local_iface, options):
 				return True
 
 			try:
-				actual_size = support.get_size(url)
+				actual_size = int(support.get_size(url))
 			except Exception, ex:
 				print "Can't get size of '%s': %s" % (url, ex)
 				return False
 			else:
-				if int(actual_size) == size:
+				if actual_size == size:
 					return True
 				print "WARNING: %s exists, but size is %d, not %d!" % (url, actual_size, size)
 				return False
