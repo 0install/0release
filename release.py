@@ -4,7 +4,7 @@
 import os, sys, subprocess, shutil, tarfile, tempfile
 from zeroinstall import SafeException
 from zeroinstall.injector import reader, model
-from logging import info
+from logging import info, warn
 
 import support
 from scm import get_scm
@@ -208,6 +208,7 @@ def do_release(local_iface, options):
 			if url.startswith('http://TESTING/releases'):
 				return True
 
+			print "Testing URL %s..." % url
 			try:
 				actual_size = int(support.get_size(url))
 			except Exception, ex:

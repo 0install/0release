@@ -12,7 +12,7 @@ release_status_file = 'release-status'
 def check_call(*args, **kwargs):
 	exitstatus = subprocess.call(*args, **kwargs)
 	if exitstatus != 0:
-		raise SafeException("Command failed with exit code %d:\n%s" % (exitstatus, ' '.join(args[0])))
+		raise SafeException("Command failed with exit code %d:\n%s" % (exitstatus, ' '.join(args)))
 
 def show_and_run(cmd, args):
 	print "Executing: %s %s" % (cmd, ' '.join("[%s]" % x for x in args))
