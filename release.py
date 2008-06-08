@@ -317,6 +317,7 @@ def do_release(local_iface, options):
 				info("Regenerating archive (may have been modified by generate-archive hooks...")
 				support.check_call(['tar', 'cjf', archive_file, archive_name])
 			except SafeException:
+				scm.reset_hard(scm.get_current_branch())
 				fail_candidate(archive_file)
 				raise
 
