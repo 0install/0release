@@ -43,6 +43,7 @@ def do_release(local_iface, options):
 	for phase in valid_phases:
 		phase_actions[phase] = []	# List of <release:action> elements
 
+	add_toplevel_dir = None
 	release_management = local_iface.get_metadata(XMLNS_RELEASE, 'management')
 	if len(release_management) == 1:
 		info("Found <release:management> element.")
@@ -53,6 +54,8 @@ def do_release(local_iface, options):
 				if phase not in valid_phases:
 					raise SafeException("Invalid action phase '%s' in local feed %s. Valid actions are:\n%s" % (phase, local_iface.uri, '\n'.join(valid_phases)))
 				phase_actions[phase].append(x.content)
+			elif x.uri == XMLNS_RELEASE and x.name == 'add-toplevel-directory':
+				add_toplevel_dir = local_iface.get_name()
 			else:
 				warn("Unknown <release:management> element: %s", x)
 	elif len(release_management) > 1:
@@ -304,11 +307,15 @@ def do_release(local_iface, options):
 	archive_name = support.make_archive_name(local_iface.get_name(), status.release_version)
 	archive_file = archive_name + '.tar.bz2'
 
+	export_prefix = archive_name
+	if add_toplevel_dir is not None:
+		export_prefix += '/' + add_toplevel_dir
+
 	if status.created_archive and os.path.isfile(archive_file):
 		print "Archive already created"
 	else:
 		support.backup_if_exists(archive_file)
-		scm.export(archive_name, archive_file, status.head_at_release)
+		scm.export(export_prefix, archive_file, status.head_at_release)
 
 		if phase_actions['generate-archive']:
 			try:
@@ -333,11 +340,11 @@ def do_release(local_iface, options):
 	#backup_if_exists(archive_name)
 	unpack_tarball(archive_file, archive_name)
 	if local_impl.main:
-		main = os.path.join(archive_name, local_impl.main)
+		main = os.path.join(export_prefix, local_impl.main)
 		if not os.path.exists(main):
 			raise SafeException("Main executable '%s' not found after unpacking archive!" % main)
 
-	extracted_iface_path = os.path.abspath(os.path.join(archive_name, local_iface_rel_path))
+	extracted_iface_path = os.path.abspath(os.path.join(export_prefix, local_iface_rel_path))
 	assert os.path.isfile(extracted_iface_path), "Local feed not in archive! Is it under version control?"
 	extracted_iface = model.Interface(extracted_iface_path)
 	reader.update(extracted_iface, extracted_iface_path, local = True)
