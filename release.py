@@ -15,14 +15,14 @@ valid_phases = ['commit-release', 'generate-archive']
 
 TMP_BRANCH_NAME = '0release-tmp'
 
-def run_unit_tests(impl):
+def run_unit_tests(local_feed, impl):
 	self_test = impl.metadata.get('self-test', None)
 	if self_test is None:
 		print "SKIPPING unit tests for %s (no 'self-test' attribute set)" % impl
 		return
-	self_test = os.path.join(impl.id, self_test)
+	self_test_dir = os.path.dirname(os.path.join(impl.id, self_test))
 	print "Running self-test:", self_test
-	exitstatus = subprocess.call([self_test], cwd = os.path.dirname(self_test))
+	exitstatus = subprocess.call(['0launch', '--main', self_test, local_feed], cwd = self_test_dir)
 	if exitstatus:
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
 
@@ -197,7 +197,7 @@ def do_release(local_iface, options):
 					raise SafeException("Master feed %s already contains an implementation with version number %s!" % (options.master_feed_file, status.release_version))
 
 			tar = tarfile.open(archive_file, 'r:bz2')
-			stream = tar.extractfile(tar.getmember(archive_name + '/' + local_iface_rel_path))
+			stream = tar.extractfile(tar.getmember(export_prefix + '/' + local_iface_rel_path))
 			remote_dl_iface = create_feed(stream, archive_file, archive_name)
 			stream.close()
 
@@ -351,7 +351,7 @@ def do_release(local_iface, options):
 	extracted_impl = support.get_singleton_impl(extracted_iface)
 
 	try:
-		run_unit_tests(extracted_impl)
+		run_unit_tests(extracted_iface_path, extracted_impl)
 	except SafeException:
 		print "(leaving extracted directory for examination)"
 		fail_candidate(archive_file)
