@@ -115,12 +115,13 @@ def do_release(local_iface, options):
 
 		scm.grep('\(^\\|[^=]\)\<\\(TODO\\|XXX\\|FIXME\\)\>')
 	
-	def create_feed(local_iface_stream, archive_file, archive_name):
+	def create_feed(local_iface_stream, archive_file, archive_name, main):
 		tmp = tempfile.NamedTemporaryFile(prefix = '0release-')
 		shutil.copyfileobj(local_iface_stream, tmp)
 		tmp.flush()
 
 		support.publish(tmp.name,
+			set_main = main,
 			archive_url = options.archive_dir_public_url + '/' + os.path.basename(archive_file),
 			archive_file = archive_file,
 			archive_extract = archive_name)
@@ -162,7 +163,7 @@ def do_release(local_iface, options):
 		os.unlink(support.release_status_file)
 		print "Restored to state before starting release. Make your fixes and try again..."
 	
-	def accept_and_publish(archive_file, archive_name, local_iface_rel_path):
+	def accept_and_publish(archive_file, archive_name, local_iface_rel_path, main):
 		assert options.master_feed_file
 
 		if not options.archive_dir_public_url:
@@ -198,7 +199,7 @@ def do_release(local_iface, options):
 
 			tar = tarfile.open(archive_file, 'r:bz2')
 			stream = tar.extractfile(tar.getmember(export_prefix + '/' + local_iface_rel_path))
-			remote_dl_iface = create_feed(stream, archive_file, archive_name)
+			remote_dl_iface = create_feed(stream, archive_file, archive_name, main)
 			stream.close()
 
 			support.publish(options.master_feed_file, local = remote_dl_iface.name, xmlsign = True, key = options.key)
@@ -397,7 +398,10 @@ def do_release(local_iface, options):
 	shutil.rmtree(archive_name)
 
 	if choice == 'Publish':
-		accept_and_publish(archive_file, archive_name, local_iface_rel_path)
+		main = extracted_impl.main
+		if main and add_toplevel_dir:
+			main = os.path.join(add_toplevel_dir, main)
+		accept_and_publish(archive_file, archive_name, local_iface_rel_path, main)
 	else:
 		assert choice == 'Fail'
 		fail_candidate(archive_file)
