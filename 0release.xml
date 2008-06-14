@@ -22,6 +22,6 @@
       <version not-before="0.13"/>
       <environment insert="0publish" mode="replace" name="0PUBLISH"/>
     </requires>
-    <implementation id="." released="2008-06-14" version="0.8"/>
+    <implementation id="." version="0.8-post"/>
   </group>
 </interface>
