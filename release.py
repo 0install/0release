@@ -127,11 +127,6 @@ def do_release(local_iface, options):
 			archive_extract = archive_name)
 		return tmp
 	
-	def unpack_tarball(archive_file, archive_name):
-		tar = tarfile.open(archive_file, 'r:bz2')
-		members = [m for m in tar.getmembers() if m.name != 'pax_global_header']
-		tar.extractall('.', members = members)
-	
 	def get_previous_release(this_version):
 		"""Return the highest numbered verison in the master feed before this_version.
 		@return: version, or None if there wasn't one"""
@@ -318,9 +313,13 @@ def do_release(local_iface, options):
 		support.backup_if_exists(archive_file)
 		scm.export(export_prefix, archive_file, status.head_at_release)
 
-		if phase_actions['generate-archive']:
+		has_submodules = scm.has_submodules()
+
+		if phase_actions['generate-archive'] or has_submodules:
 			try:
-				unpack_tarball(archive_file, archive_name)
+				support.unpack_tarball(archive_file)
+				if has_submodules:
+					scm.export_submodules(archive_name)
 				run_hooks('generate-archive', cwd = archive_name, env = {'RELEASE_VERSION': status.release_version})
 				info("Regenerating archive (may have been modified by generate-archive hooks...")
 				support.check_call(['tar', 'cjf', archive_file, archive_name])
@@ -339,7 +338,7 @@ def do_release(local_iface, options):
 		scm.reset_hard(scm.get_current_branch())
 
 	#backup_if_exists(archive_name)
-	unpack_tarball(archive_file, archive_name)
+	support.unpack_tarball(archive_file)
 	if local_impl.main:
 		main = os.path.join(export_prefix, local_impl.main)
 		if not os.path.exists(main):
@@ -359,7 +358,7 @@ def do_release(local_iface, options):
 		raise
 	# Unpack it again in case the unit-tests changed anything
 	shutil.rmtree(archive_name)
-	unpack_tarball(archive_file, archive_name)
+	support.unpack_tarball(archive_file)
 
 	previous_release = get_previous_release(status.release_version)
 	export_changelog(previous_release)
@@ -383,7 +382,7 @@ def do_release(local_iface, options):
 			previous_archive_name = support.make_archive_name(local_iface.get_name(), previous_release)
 			previous_archive_file = previous_archive_name + '.tar.bz2'
 			if os.path.isfile(previous_archive_file):
-				unpack_tarball(previous_archive_file, previous_archive_name)
+				support.unpack_tarball(previous_archive_file)
 				try:
 					support.show_diff(previous_archive_name, archive_name)
 				finally:

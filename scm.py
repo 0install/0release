@@ -1,20 +1,22 @@
 # Copyright (C) 2007, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 
-import os, subprocess
+import os, subprocess, tempfile
 from zeroinstall import SafeException
 from logging import info
+from support import unpack_tarball
 
 class SCM:
 	def __init__(self, root_dir, options):
 		self.options = options
 		self.root_dir = root_dir
+		assert type(root_dir) == str, root_dir
 
 class GIT(SCM):
 	def _run(self, args, **kwargs):
 		info("Running git %s", ' '.join(args))
 		return subprocess.Popen(["git"] + args, cwd = self.root_dir, **kwargs)
-	
+
 	def _run_check(self, args, **kwargs):
 		child = self._run(args, **kwargs)
 		code = child.wait()
@@ -27,7 +29,7 @@ class GIT(SCM):
 		if child.returncode:
 			raise SafeException('Failed to get current branch! Exit code %d: %s' % (child.returncode, stdout))
 		return stdout
-	
+
 	def ensure_versioned(self, path):
 		"""Ensure path is a file tracked by the version control system.
 		@raise SafeException: if file is not tracked"""
@@ -43,7 +45,18 @@ class GIT(SCM):
 		stdout, unused = child.communicate()
 		if not child.returncode:
 			raise SafeException('Uncommitted changes! Use "git-commit -a" to commit them. Changes are:\n' + stdout)
-	
+		for scm in self._submodules():
+			scm.ensure_committed()
+
+	def _submodules(self):
+		for line in self._run_stdout(['submodule', 'status']).split('\n'):
+			if not line: continue
+			r, subdir = line.strip().split(' ')[:2]
+			scm = GIT(os.path.join(self.root_dir, subdir), self.options)
+			scm.rev = r
+			scm.rel_path = subdir
+			yield scm
+
 	def make_tag(self, version):
 		return 'v' + version
 
@@ -55,18 +68,18 @@ class GIT(SCM):
 			key_opts = []
 		self._run_check(['tag', '-s'] + key_opts + ['-m', 'Release %s' % version, tag, revision])
 		print "Tagged as %s" % tag
-	
+
 	def get_current_branch(self):
 		current_branch = self._run_stdout(['symbolic-ref', 'HEAD']).strip()
 		info("Current branch is %s", current_branch)
 		return current_branch
-	
+
 	def delete_branch(self, branch):
 		self._run_check(['branch', '-D', branch])
 
 	def push_head_and_release(self, version):
 		self._run_check(['push', self.options.public_scm_repository, self.make_tag(version), self.get_current_branch()])
-	
+
 	def ensure_no_tag(self, version):
 		tag = self.make_tag(version)
 		child = self._run(['tag', '-l', tag], stdout = subprocess.PIPE)
@@ -74,7 +87,7 @@ class GIT(SCM):
 		if tag in stdout.split('\n'):
 			raise SafeException(("Release %s is already tagged! If you want to replace it, do\n" + 
 						"git-tag -d %s") % (version, tag))
-	
+
 	def export(self, prefix, archive_file, revision):
 		child = self._run(['archive', '--format=tar', '--prefix=' + prefix + '/', revision], stdout = subprocess.PIPE)
 		subprocess.check_call(['bzip2', '-'], stdin = child.stdout, stdout = file(archive_file, 'w'))
@@ -83,7 +96,21 @@ class GIT(SCM):
 			if os.path.exists(archive_file):
 				os.unlink(archive_file)
 			raise SafeException("git-archive failed with exit code %d" % status)
-	
+
+	def export_submodules(self, target):
+		# Export all sub-modules under target
+		cwd = os.getcwd()
+		target = os.path.abspath(target)
+		for scm in self._submodules():
+			tmp = tempfile.NamedTemporaryFile(prefix = '0release-')
+			try:
+				scm.export(prefix = '.', archive_file = tmp.name, revision = scm.rev)
+				os.chdir(os.path.join(target, scm.rel_path))
+				unpack_tarball(tmp.name)
+			finally:
+				tmp.close()
+		os.chdir(cwd)
+
 	def commit(self, message, branch, parent):
 		self._run_check(['add', '-u'])		# Commit all changed tracked files to index
 		tree = self._run_stdout(['write-tree']).strip()
@@ -93,7 +120,7 @@ class GIT(SCM):
 		info("Committed as %s", commit)
 		self._run_check(['branch', '-f', branch, commit])
 		return commit
-	
+
 	def get_head_revision(self):
 		proc = self._run(['rev-parse', 'HEAD'], stdout = subprocess.PIPE)
 		stdout, unused = proc.communicate()
@@ -102,7 +129,7 @@ class GIT(SCM):
 		head = stdout.strip()
 		assert head
 		return head
-	
+
 	def export_changelog(self, last_release_version, head, stream):
 		if last_release_version:
 			self._run_check(['log', 'refs/tags/v' + last_release_version + '..' + head], stdout = stream)
@@ -111,6 +138,9 @@ class GIT(SCM):
 
 	def grep(self, pattern):
 		self._run_check(['grep', pattern])
+
+	def has_submodules(self):
+		return os.path.isfile(os.path.join(self.root_dir, '.gitmodules'))
 
 def get_scm(local_iface, options):
 	start_dir = os.path.dirname(os.path.abspath(local_iface.uri))

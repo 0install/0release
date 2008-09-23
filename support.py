@@ -1,7 +1,7 @@
 # Copyright (C) 2007, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 
-import os, subprocess, shutil
+import os, subprocess, shutil, tarfile
 import urlparse, ftplib, httplib
 from zeroinstall import SafeException
 from zeroinstall.injector import model
@@ -192,3 +192,9 @@ def get_size(url):
 		return get_ftp_size(url)
 	else:
 		raise SafeException("Unknown scheme '%s' in '%s'" % (scheme, url))
+
+def unpack_tarball(archive_file):
+	tar = tarfile.open(archive_file, 'r:bz2')
+	members = [m for m in tar.getmembers() if m.name != 'pax_global_header']
+	tar.extractall('.', members = members)
+
