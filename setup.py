@@ -49,7 +49,7 @@ MASTER_FEED_UPLOAD_COMMAND=
 # HEAD and the release tag will be pushed to this using a command
 # such as "git-push main master v0.1"
 # If unset, you'll have to update it yourself.
-#PUBLIC_SCM_REPOSITORY=main
+#PUBLIC_SCM_REPOSITORY=origin
 PUBLIC_SCM_REPOSITORY=
 
 cd `dirname "$0"`
