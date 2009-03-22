@@ -27,6 +27,9 @@ def run_unit_tests(local_feed, impl):
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
 
 def do_release(local_iface, options):
+	assert options.master_feed_file
+	options.master_feed_file = os.path.abspath(options.master_feed_file)
+
 	status = support.Status()
 	local_impl = support.get_singleton_impl(local_iface)
 
@@ -90,6 +93,10 @@ def do_release(local_iface, options):
 
 		print "Releasing version", release_version
 		support.publish(local_iface.uri, set_released = 'today', set_version = release_version)
+
+		support.backup_if_exists(release_version)
+		os.mkdir(release_version)
+		os.chdir(release_version)
 
 		status.old_snapshot_version = local_impl.get_version()
 		status.release_version = release_version
@@ -227,7 +234,7 @@ def do_release(local_iface, options):
 			print "Archive already uploaded. Not uploading again."
 		else:
 			while True:
-				print "Upload %s as %s" % (archive_file, archive_url)
+				print "Upload %s/%s as %s" % (status.release_version, archive_file, archive_url)
 				cmd = options.archive_upload_command.strip()
 				if cmd:
 					support.show_and_run(cmd, [archive_file])
@@ -281,6 +288,7 @@ def do_release(local_iface, options):
 	ensure_ready_to_release()
 
 	if status.release_version:
+		os.chdir(status.release_version)
 		need_set_snapshot = False
 		if status.tagged:
 			print "Already tagged. Resuming the publishing process..."
@@ -296,7 +304,7 @@ def do_release(local_iface, options):
 			raise SafeException("Something went wrong previously when setting the new snapshot version.\n" +
 					    "Suggest you reset to the original HEAD of\n%s and delete '%s'." % (status.head_before_release, support.release_status_file))
 	else:
-		set_to_release()
+		set_to_release()	# Changes directory
 		assert status.release_version
 		need_set_snapshot = True
 
@@ -380,7 +388,14 @@ def do_release(local_iface, options):
 		choice = support.get_choice(['Publish', 'Fail'] + maybe_diff)
 		if choice == 'Diff':
 			previous_archive_name = support.make_archive_name(local_iface.get_name(), previous_release)
-			previous_archive_file = previous_archive_name + '.tar.bz2'
+			previous_archive_file = '../%s/%s.tar.bz2' % (previous_release, previous_archive_name)
+
+			# For archives created by older versions of 0release
+			if not os.path.isfile(previous_archive_file):
+				old_previous_archive_file = '../%s.tar.bz2' % previous_archive_name
+				if os.path.isfile(old_previous_archive_file):
+					previous_archive_file = old_previous_archive_file
+
 			if os.path.isfile(previous_archive_file):
 				support.unpack_tarball(previous_archive_file)
 				try:

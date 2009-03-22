@@ -50,8 +50,8 @@ class TestRelease(unittest.TestCase):
 		unused, unused = child.communicate('\nP\n\n')
 		assert child.returncode == 0
 
-		assert 'Prints "Hello World"' in file('changelog-0.1').read()
-		assert 'Prints "Hello World"' not in file('changelog-0.2').read()
+		assert 'Prints "Hello World"' in file('0.1/changelog-0.1').read()
+		assert 'Prints "Hello World"' not in file('0.2/changelog-0.2').read()
 
 	def testUncommitted(self):
 		support.check_call(['tar', 'xzf', test_repo_actions])

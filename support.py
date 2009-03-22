@@ -7,7 +7,7 @@ from zeroinstall import SafeException
 from zeroinstall.injector import model
 from logging import info
 
-release_status_file = 'release-status'
+release_status_file = os.path.abspath('release-status')
 
 def check_call(*args, **kwargs):
 	exitstatus = subprocess.call(*args, **kwargs)
