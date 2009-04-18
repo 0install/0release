@@ -4,7 +4,7 @@
 import os, subprocess, shutil, tarfile
 import urlparse, ftplib, httplib
 from zeroinstall import SafeException
-from zeroinstall.injector import model
+from zeroinstall.injector import model, qdom
 from logging import info
 
 release_status_file = os.path.abspath('release-status')
@@ -198,3 +198,9 @@ def unpack_tarball(archive_file):
 	members = [m for m in tar.getmembers() if m.name != 'pax_global_header']
 	tar.extractall('.', members = members)
 
+def load_feed(path):
+	stream = open(path)
+	try:
+		return model.ZeroInstallFeed(qdom.parse(stream), local_path = path)
+	finally:
+		stream.close()

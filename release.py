@@ -1,12 +1,12 @@
-# Copyright (C) 2007, Thomas Leonard
+# Copyright (C) 2009, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 
-import os, sys, subprocess, shutil, tarfile, tempfile
+import os, sys, subprocess, shutil, tempfile
 from zeroinstall import SafeException
 from zeroinstall.injector import reader, model
 from logging import info, warn
 
-import support
+import support, compile
 from scm import get_scm
 
 XMLNS_RELEASE = 'http://zero-install.sourceforge.net/2007/namespaces/0release'
@@ -122,17 +122,14 @@ def do_release(local_iface, options):
 
 		scm.grep('\(^\\|[^=]\)\<\\(TODO\\|XXX\\|FIXME\\)\>')
 	
-	def create_feed(local_iface_stream, archive_file, archive_name, main):
-		tmp = tempfile.NamedTemporaryFile(prefix = '0release-')
-		shutil.copyfileobj(local_iface_stream, tmp)
-		tmp.flush()
+	def create_feed(target_feed, local_iface_path, archive_file, archive_name, main):
+		shutil.copyfile(local_iface_path, target_feed)
 
-		support.publish(tmp.name,
+		support.publish(target_feed,
 			set_main = main,
 			archive_url = options.archive_dir_public_url + '/' + os.path.basename(archive_file),
 			archive_file = archive_file,
 			archive_extract = archive_name)
-		return tmp
 	
 	def get_previous_release(this_version):
 		"""Return the highest numbered verison in the master feed before this_version.
@@ -167,7 +164,7 @@ def do_release(local_iface, options):
 		os.unlink(support.release_status_file)
 		print "Restored to state before starting release. Make your fixes and try again..."
 	
-	def accept_and_publish(archive_file, archive_name, local_iface_rel_path, main):
+	def accept_and_publish(archive_file, archive_name, src_feed_name):
 		assert options.master_feed_file
 
 		if not options.archive_dir_public_url:
@@ -201,13 +198,15 @@ def do_release(local_iface, options):
 				if len(existing_releases):
 					raise SafeException("Master feed %s already contains an implementation with version number %s!" % (options.master_feed_file, status.release_version))
 
-			tar = tarfile.open(archive_file, 'r:bz2')
-			stream = tar.extractfile(tar.getmember(export_prefix + '/' + local_iface_rel_path))
-			remote_dl_iface = create_feed(stream, archive_file, archive_name, main)
-			stream.close()
+			# Merge the source and binary feeds together first, so
+			# that we update the master feed atomically and only
+			# have to sign it once.
+			shutil.copyfile(src_feed_name, 'merged.xml')
+			for b in compiler.get_binary_feeds():
+				support.publish('merged.xml', local = b)
 
-			support.publish(options.master_feed_file, local = remote_dl_iface.name, xmlsign = True, key = options.key)
-			remote_dl_iface.close()
+			support.publish(options.master_feed_file, local = 'merged.xml', xmlsign = True, key = options.key)
+			os.unlink('merged.xml')
 
 			status.updated_master_feed = 'true'
 			status.save()
@@ -290,6 +289,8 @@ def do_release(local_iface, options):
 	ensure_ready_to_release()
 
 	if status.release_version:
+		if not os.path.isdir(status.release_version):
+			raise SafeException("Can't resume; directory %s missing. Try deleting '%s'." % (status.release_version, support.release_status_file))
 		os.chdir(status.release_version)
 		need_set_snapshot = False
 		if status.tagged:
@@ -370,6 +371,19 @@ def do_release(local_iface, options):
 	shutil.rmtree(archive_name)
 	support.unpack_tarball(archive_file)
 
+	# Generate feed for source
+	stream = open(extracted_iface_path)
+	main = extracted_impl.main
+	if main and add_toplevel_dir:
+		main = os.path.join(add_toplevel_dir, main)
+	src_feed_name = '%s.xml' % archive_name
+	create_feed(src_feed_name, extracted_iface_path, archive_file, archive_name, main)
+	print "Wrote source feed as %s" % src_feed_name
+
+	# If it's a source package, compile the binaries now...
+	compiler = compile.Compiler(options, os.path.abspath(src_feed_name))
+	compiler.build_binaries()
+
 	previous_release = get_previous_release(status.release_version)
 	export_changelog(previous_release)
 
@@ -414,10 +428,7 @@ def do_release(local_iface, options):
 	shutil.rmtree(archive_name)
 
 	if choice == 'Publish':
-		main = extracted_impl.main
-		if main and add_toplevel_dir:
-			main = os.path.join(add_toplevel_dir, main)
-		accept_and_publish(archive_file, archive_name, local_iface_rel_path, main)
+		accept_and_publish(archive_file, archive_name, src_feed_name)
 	else:
 		assert choice == 'Fail'
 		fail_candidate(archive_file)
