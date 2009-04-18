@@ -160,7 +160,9 @@ def do_release(local_iface, options):
 			changelog.close()
 	
 	def fail_candidate(archive_file):
-		support.backup_if_exists(archive_file)
+		cwd = os.getcwd()
+		assert cwd.endswith(status.release_version)
+		support.backup_if_exists(cwd)
 		scm.delete_branch(TMP_BRANCH_NAME)
 		os.unlink(support.release_status_file)
 		print "Restored to state before starting release. Make your fixes and try again..."
