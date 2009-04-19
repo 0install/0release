@@ -204,3 +204,6 @@ def load_feed(path):
 		return model.ZeroInstallFeed(qdom.parse(stream), local_path = path)
 	finally:
 		stream.close()
+
+def get_archive_basename(impl):
+	return os.path.basename(urlparse.urlparse(impl.download_sources[0].url).path)

@@ -1,7 +1,7 @@
 # Copyright (C) 2009, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 
-import tempfile, shutil, subprocess, os, urlparse
+import tempfile, shutil, subprocess, os
 import ConfigParser
 from zeroinstall.injector import model
 
@@ -29,7 +29,7 @@ class Compiler:
 
 		print "Source package, so generating binaries..."
 
-		archive_file = os.path.basename(urlparse.urlparse(self.src_impl.download_sources[0].url).path)
+		archive_file = support.get_archive_basename(self.src_impl)
 
 		for arch in self.targets:
 			if arch == 'host':
@@ -43,6 +43,14 @@ class Compiler:
 			else:
 				print "\nBuilding binary for %s architecture...\n" % arch
 				subprocess.check_call(command + [self.src_feed_name, archive_file, self.archive_dir_public_url, binary_feed + '.new'])
+				bin_feed = support.load_feed(binary_feed + '.new')
+				bin_impl = support.get_singleton_impl(bin_feed)
+				bin_archive_file = support.get_archive_basename(bin_impl)
+				bin_size = bin_impl.download_sources[0].size
+
+				assert os.path.exists(bin_archive_file), "Compiled binary '%s' not found!" % os.path.abspath(bin_archive_file)
+				assert os.path.getsize(bin_archive_file) == bin_size, "Compiled binary '%s' has wrong size!" % os.path.abspath(bin_archive_file)
+
 				os.rename(binary_feed + '.new', binary_feed)
 
 	def get_binary_feeds(self):
@@ -81,9 +89,14 @@ def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
 
 		subprocess.check_call(['0launch', COMPILE, 'build'], cwd = tmpdir)
 		subprocess.check_call(['0launch', COMPILE, 'publish', '--target-feed', target_feed], cwd = tmpdir)
-		subprocess.check_call(['0launch', COMPILE, 'clean'], cwd = tmpdir)
 
-		# TODO: unit-tests
+		# TODO: run unit-tests
+
+		feed = support.load_feed(target_feed)
+		impl = support.get_singleton_impl(feed)
+		archive_file = support.get_archive_basename(impl)
+
+		shutil.move(archive_file, os.path.join(os.path.dirname(target_feed), archive_file))
 	except:
 		print "\nLeaving temporary directory %s for inspection...\n" % tmpdir
 		raise
