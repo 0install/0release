@@ -115,7 +115,7 @@ def do_release(local_iface, options):
 			raise SafeException("Master feed file not set! Check your configuration")
 
 		scm.ensure_committed()
-		scm.ensure_versioned(local_iface_rel_path)
+		scm.ensure_versioned(os.path.abspath(local_iface.uri))
 		info("No uncommitted changes. Good.")
 		# Not needed for GIT. For SCMs where tagging is expensive (e.g. svn) this might be useful.
 		#run_unit_tests(local_impl)

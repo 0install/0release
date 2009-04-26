@@ -14,7 +14,7 @@ class SCM:
 
 class GIT(SCM):
 	def _run(self, args, **kwargs):
-		info("Running git %s", ' '.join(args))
+		info("Running git %s (in %s)", ' '.join(args), self.root_dir)
 		return subprocess.Popen(["git"] + args, cwd = self.root_dir, **kwargs)
 
 	def _run_check(self, args, **kwargs):
