@@ -207,3 +207,14 @@ def load_feed(path):
 
 def get_archive_basename(impl):
 	return os.path.basename(urlparse.urlparse(impl.download_sources[0].url).path)
+
+def relative_path(ancestor, dst):
+	stem = os.path.abspath(os.path.dirname(ancestor))
+	dst = os.path.abspath(dst)
+	if stem != '/':
+		stem += '/'
+	assert dst.startswith(stem)
+	return dst[len(stem):]
+
+assert relative_path('/foo', '/foo') == 'foo'
+assert relative_path('/foo', '/foo/bar') == 'foo/bar'

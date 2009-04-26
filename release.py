@@ -38,6 +38,9 @@ def do_release(local_iface, options):
 	local_impl_dir = os.path.realpath(local_impl_dir)
 	assert os.path.isdir(local_impl_dir)
 	assert local_iface.uri.startswith(local_impl_dir + '/')
+
+	# From the impl directory to the feed
+	# NOT relative to the archive root (in general)
 	local_iface_rel_path = local_iface.uri[len(local_impl_dir) + 1:]
 	assert not local_iface_rel_path.startswith('/')
 	assert os.path.isfile(os.path.join(local_impl_dir, local_iface_rel_path))
@@ -67,6 +70,9 @@ def do_release(local_iface, options):
 		info("No <release:management> element found in local feed.")
 
 	scm = get_scm(local_iface, options)
+
+	# Path relative to the archive / SCM root
+	local_iface_rel_root_path = local_iface.uri[len(scm.root_dir) + 1:]
 
 	def run_hooks(phase, cwd, env):
 		info("Running hooks for phase '%s'" % phase)
@@ -350,16 +356,23 @@ def do_release(local_iface, options):
 
 	#backup_if_exists(archive_name)
 	support.unpack_tarball(archive_file)
-	if local_impl.main:
-		main = os.path.join(export_prefix, local_impl.main)
-		if not os.path.exists(main):
-			raise SafeException("Main executable '%s' not found after unpacking archive!" % main)
 
-	extracted_iface_path = os.path.abspath(os.path.join(export_prefix, local_iface_rel_path))
+	extracted_iface_path = os.path.abspath(os.path.join(export_prefix, local_iface_rel_root_path))
 	assert os.path.isfile(extracted_iface_path), "Local feed not in archive! Is it under version control?"
 	extracted_iface = model.Interface(extracted_iface_path)
 	reader.update(extracted_iface, extracted_iface_path, local = True)
 	extracted_impl = support.get_singleton_impl(extracted_iface)
+
+	if extracted_impl.main:
+		# Find main executable, relative to the archive root
+		abs_main = os.path.join(os.path.dirname(extracted_iface_path), extracted_impl.main)
+		main = support.relative_path(archive_name + '/', abs_main)
+		if main != extracted_impl.main:
+			print "(adjusting main: '%s' for the feed inside the archive, '%s' externally)" % (extracted_impl.main, main)
+		if not os.path.exists(abs_main):
+			raise SafeException("Main executable '%s' not found after unpacking archive!" % abs_main)
+	else:
+		main = None
 
 	try:
 		run_unit_tests(extracted_iface_path, extracted_impl)
@@ -373,9 +386,6 @@ def do_release(local_iface, options):
 
 	# Generate feed for source
 	stream = open(extracted_iface_path)
-	main = extracted_impl.main
-	if main and add_toplevel_dir:
-		main = os.path.join(add_toplevel_dir, main)
 	src_feed_name = '%s.xml' % archive_name
 	create_feed(src_feed_name, extracted_iface_path, archive_file, archive_name, main)
 	print "Wrote source feed as %s" % src_feed_name
