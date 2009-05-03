@@ -103,7 +103,16 @@ class TestRelease(unittest.TestCase):
 
 		archives = os.listdir('archives')
 		assert os.path.basename(src_impl.download_sources[0].url) in archives
-		assert os.path.basename(host_impl.download_sources[0].url) in archives
+
+		host_download = host_impl.download_sources[0]
+		host_archive = os.path.basename(host_download.url)
+		assert host_archive in archives
+		support.check_call(['tar', 'xjf', os.path.join('archives', host_archive)])
+		c = subprocess.Popen(['0launch', os.path.join(host_download.extract, '0install', 'helloworld-in-c-1.1.xml')], stdout = subprocess.PIPE)
+		output, _ = c.communicate()
+
+		self.assertEquals("Hello from C! (version 1.1)\n", output)
+
 
 suite = unittest.makeSuite(TestRelease)
 if __name__ == '__main__':
