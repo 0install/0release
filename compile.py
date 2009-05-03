@@ -15,6 +15,7 @@ class Compiler:
 		self.src_feed_name = src_feed_name
 		self.src_feed = support.load_feed(src_feed_name)
 		self.archive_dir_public_url = options.archive_dir_public_url
+		assert options.archive_dir_public_url
 
 		self.src_impl = support.get_singleton_impl(self.src_feed)
 		if self.src_impl.arch and self.src_impl.arch.endswith('-src'):

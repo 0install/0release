@@ -125,6 +125,9 @@ def do_release(local_iface, options):
 	assert options.master_feed_file
 	options.master_feed_file = os.path.abspath(options.master_feed_file)
 
+	if not options.archive_dir_public_url:
+		raise SafeException("Downloads directory not set. Edit the 'make-release' script and try again.")
+
 	status = support.Status()
 	local_impl = support.get_singleton_impl(local_iface)
 
