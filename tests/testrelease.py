@@ -3,6 +3,7 @@
 # See the README file for details, or visit http://0install.net.
 import sys, os, shutil, tempfile, subprocess
 import unittest
+from zeroinstall.injector import model, qdom
 
 sys.path.insert(0, '..')
 
@@ -12,11 +13,12 @@ mydir = os.path.realpath(os.path.dirname(__file__))
 release_feed = mydir + '/../0release.xml'
 test_repo = mydir + '/test-repo.tgz'
 test_repo_actions = mydir + '/test-repo-actions.tgz'
+test_repo_c = mydir + '/c-prog.tgz'
 test_gpg = mydir + '/gpg.tgz'
 
-def make_releases_dir():
+def make_releases_dir(src_feed = '../hello/HelloWorld.xml'):
 	os.chdir('releases')
-	support.check_call(['0launch', release_feed, '../hello/HelloWorld.xml'])
+	support.check_call(['0launch', release_feed, src_feed])
 	assert os.path.isfile('make-release')
 
 	lines = file('make-release').readlines()
@@ -76,6 +78,23 @@ class TestRelease(unittest.TestCase):
 		assert child.returncode == 0
 
 		assert "version = '0.2'\n" in file('../hello/hello.py').read()
+
+	def testBinaryRelease(self):
+		support.check_call(['tar', 'xzf', test_repo_c])
+		make_releases_dir(src_feed = '../c-prog/c-prog.xml')
+
+		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE)
+		unused, unused = child.communicate('\nP\n\n')
+		assert child.returncode == 0
+
+		feed = model.ZeroInstallFeed(qdom.parse(file('HelloWorld-in-C.xml')))
+
+		assert len(feed.implementations) == 2
+		src_impl, = [x for x in feed.implementations.values() if x.arch == '*-src']
+		host_impl, = [x for x in feed.implementations.values() if x.arch != '*-src']
+
+		assert src_impl.main == None
+		assert host_impl.main == 'hello'
 
 suite = unittest.makeSuite(TestRelease)
 if __name__ == '__main__':
