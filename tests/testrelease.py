@@ -16,13 +16,18 @@ test_repo_actions = mydir + '/test-repo-actions.tgz'
 test_repo_c = mydir + '/c-prog.tgz'
 test_gpg = mydir + '/gpg.tgz'
 
-def make_releases_dir(src_feed = '../hello/HelloWorld.xml'):
+def make_releases_dir(src_feed = '../hello/HelloWorld.xml', auto_upload = False):
 	os.chdir('releases')
 	support.check_call(['0launch', release_feed, src_feed])
 	assert os.path.isfile('make-release')
 
 	lines = file('make-release').readlines()
 	lines[lines.index('ARCHIVE_DIR_PUBLIC_URL=\n')] = 'ARCHIVE_DIR_PUBLIC_URL=http://TESTING/releases\n'
+
+	if auto_upload:
+		os.mkdir('archives')
+		lines[lines.index('ARCHIVE_UPLOAD_COMMAND=\n')] = 'ARCHIVE_UPLOAD_COMMAND=\'cp "$@" ../archives/\'\n'
+
 	s = file('make-release', 'w')
 	s.write(''.join(lines))
 	s.close()
@@ -81,7 +86,7 @@ class TestRelease(unittest.TestCase):
 
 	def testBinaryRelease(self):
 		support.check_call(['tar', 'xzf', test_repo_c])
-		make_releases_dir(src_feed = '../c-prog/c-prog.xml')
+		make_releases_dir(src_feed = '../c-prog/c-prog.xml', auto_upload = True)
 
 		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE)
 		unused, unused = child.communicate('\nP\n\n')
@@ -95,6 +100,10 @@ class TestRelease(unittest.TestCase):
 
 		assert src_impl.main == None
 		assert host_impl.main == 'hello'
+
+		archives = os.listdir('archives')
+		assert os.path.basename(src_impl.download_sources[0].url) in archives
+		assert os.path.basename(host_impl.download_sources[0].url) in archives
 
 suite = unittest.makeSuite(TestRelease)
 if __name__ == '__main__':

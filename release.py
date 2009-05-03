@@ -3,7 +3,7 @@
 
 import os, sys, subprocess, shutil, tempfile
 from zeroinstall import SafeException
-from zeroinstall.injector import reader, model
+from zeroinstall.injector import reader, model, qdom
 from logging import info, warn
 
 import support, compile
@@ -25,6 +25,101 @@ def run_unit_tests(local_feed, impl):
 	exitstatus = subprocess.call(['0launch', '--main', self_test, local_feed], cwd = self_test_dir)
 	if exitstatus:
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
+
+def upload_archives(options, status, uploads):
+	# For each binary or source archive in uploads, ensure it is available
+	# from options.archive_dir_public_url
+
+	# We try to do all the uploads together first, and then verify them all
+	# afterwards. This is because we may have to wait for them to be moved
+	# from an incoming queue before we can test them.
+
+	# Ensure URL stem ends with a slash
+	archive_dir_public_url = options.archive_dir_public_url
+	if not archive_dir_public_url.endswith('/'):
+		archive_dir_public_url += '/'
+
+	def url(archive):
+		return archive_dir_public_url + archive
+
+	# Check that url exists and has the given size
+	def is_uploaded(url, size):
+		if url.startswith('http://TESTING/releases'):
+			return True
+
+		print "Testing URL %s..." % url
+		try:
+			actual_size = int(support.get_size(url))
+		except Exception, ex:
+			print "Can't get size of '%s': %s" % (url, ex)
+			return False
+		else:
+			if actual_size == size:
+				return True
+			print "WARNING: %s exists, but size is %d, not %d!" % (url, actual_size, size)
+			return False
+
+	# status.verified_uploads is an array of status flags:
+	description = {
+		'N': 'Upload required',
+		'A': 'Upload has been attempted, but we need to check whether it worked',
+		'V': 'Upload has been checked (exists and has correct size)',
+	}
+
+	if status.verified_uploads is None:
+		# First time around; no point checking for existing uploads
+		status.verified_uploads = 'N' * len(uploads)
+		status.save()
+
+	while True:
+		print "\nUpload status:"
+		for i, stat in enumerate(status.verified_uploads):
+			print "- %s : %s" % (uploads[i], description[stat])
+		print
+
+		# Break if finished
+		if status.verified_uploads == 'V' * len(uploads):
+			break
+
+		# Find all New archives
+		to_upload = []
+		for i, stat in enumerate(status.verified_uploads):
+			assert stat in 'NAV'
+			if stat == 'N':
+				to_upload.append(uploads[i])
+				print "Upload %s/%s as %s" % (status.release_version, uploads[i], url(uploads[i]))
+
+		if to_upload:
+			# Mark all New items as Attempted
+			status.verified_uploads = status.verified_uploads.replace('N', 'A')
+			status.save()
+
+			# Upload them...
+			cmd = options.archive_upload_command.strip()
+			if cmd:
+				support.show_and_run(cmd, to_upload)
+			else:
+				if len(to_upload) == 1:
+					print "No upload command is set => please upload the archive manually now"
+					raw_input('Press Return once the archive is uploaded.')
+				else:
+					print "No upload command is set => please upload the archives manually now"
+					raw_input('Press Return once the %d archives are uploaded.' % len(to_upload))
+
+		# Verify all Attempted uploads
+		new_stat = ''
+		for i, stat in enumerate(status.verified_uploads):
+			assert stat in 'AV', status.verified_uploads
+			if stat == 'A' :
+				if not is_uploaded(url(uploads[i]), os.path.getsize(uploads[i])):
+					print "** Archive '%s' still not uploaded! Try again..." % uploads[i]
+					stat = 'N'
+				else:
+					stat = 'V'
+			new_stat += stat
+
+		status.verified_uploads = new_stat
+		status.save()
 
 def do_release(local_iface, options):
 	assert options.master_feed_file
@@ -217,46 +312,16 @@ def do_release(local_iface, options):
 			status.updated_master_feed = 'true'
 			status.save()
 
-		def is_uploaded(url, size):
-			if url.startswith('http://TESTING/releases'):
-				return True
-
-			print "Testing URL %s..." % url
-			try:
-				actual_size = int(support.get_size(url))
-			except Exception, ex:
-				print "Can't get size of '%s': %s" % (url, ex)
-				return False
-			else:
-				if actual_size == size:
-					return True
-				print "WARNING: %s exists, but size is %d, not %d!" % (url, actual_size, size)
-				return False
-
 		# Copy files...
-		print
-		archive_url = options.archive_dir_public_url + '/' + os.path.basename(archive_file)
-		archive_size = os.path.getsize(archive_file)
-		if status.uploaded_archive and is_uploaded(archive_url, archive_size):
-			print "Archive already uploaded. Not uploading again."
-		else:
-			while True:
-				print "Upload %s/%s as %s" % (status.release_version, archive_file, archive_url)
-				cmd = options.archive_upload_command.strip()
-				if cmd:
-					support.show_and_run(cmd, [archive_file])
-				else:
-					print "No upload command is set => please upload the archive manually now"
-					raw_input('Press Return once archive is uploaded.')
-				print
-				if is_uploaded(archive_url, archive_size):
-					print "OK, archive uploaded successfully"
-					status.uploaded_archive = 'true'
-					status.save()
-					break
-				print "** Archive still not uploaded! Try again..."
-				if cmd:
-					raw_input('Press Return to retry upload command.')
+		uploads = [os.path.basename(archive_file)]
+		for b in compiler.get_binary_feeds():
+			stream = file(b)
+			binary_feed = model.ZeroInstallFeed(qdom.parse(stream), local_path = b)
+			stream.close()
+			impl, = binary_feed.implementations.values()
+			uploads.append(os.path.basename(impl.download_sources[0].url))
+
+		upload_archives(options, status, uploads)
 
 		assert len(local_iface.feed_for) == 1
 		feed_base = os.path.dirname(local_iface.feed_for.keys()[0])
