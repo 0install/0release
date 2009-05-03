@@ -62,10 +62,10 @@ class TestRelease(unittest.TestCase):
 		assert child.returncode != 0
 		assert "Uncommitted changes!" in stderr
 
-	def testUncommitted(self):
+	def testActions(self):
 		support.check_call(['tar', 'xzf', test_repo_actions])
 		os.chdir('hello')
-		support.check_call(['git-commit', '-a', '-m', 'Added release instructions'])
+		support.check_call(['git', 'commit', '-a', '-m', 'Added release instructions'])
 		os.chdir('..')
 		make_releases_dir()
 
