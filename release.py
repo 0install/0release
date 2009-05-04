@@ -89,13 +89,14 @@ def upload_archives(options, status, uploads):
 				to_upload.append(uploads[i])
 				print "Upload %s/%s as %s" % (status.release_version, uploads[i], url(uploads[i]))
 
+		cmd = options.archive_upload_command.strip()
+
 		if to_upload:
 			# Mark all New items as Attempted
 			status.verified_uploads = status.verified_uploads.replace('N', 'A')
 			status.save()
 
 			# Upload them...
-			cmd = options.archive_upload_command.strip()
 			if cmd:
 				support.show_and_run(cmd, to_upload)
 			else:
@@ -120,6 +121,9 @@ def upload_archives(options, status, uploads):
 
 		status.verified_uploads = new_stat
 		status.save()
+
+		if 'N' in new_stat and cmd:
+			raw_input('Press Return to try again.')
 
 def do_release(local_iface, options):
 	assert options.master_feed_file
