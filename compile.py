@@ -25,7 +25,7 @@ class Compiler:
 		self.config.set('global', 'builders', 'host')
 
 		self.config.add_section('builder-host')
-		self.config.set('builder-host', 'build', '0launch --not-before 0.9 http://0install.net/2007/interfaces/0release.xml --build-slave')
+		self.config.set('builder-host', 'build', '0launch --not-before 0.10 http://0install.net/2007/interfaces/0release.xml --build-slave')
 
 		self.src_impl = support.get_singleton_impl(self.src_feed)
 		if self.src_impl.arch and self.src_impl.arch.endswith('-src'):
