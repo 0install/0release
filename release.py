@@ -443,7 +443,12 @@ def do_release(local_iface, options):
 		main = None
 
 	try:
-		run_unit_tests(extracted_iface_path, extracted_impl)
+		if status.src_tests_passed:
+			print "Unit-tests already passed - not running again"
+		else:
+			run_unit_tests(extracted_iface_path, extracted_impl)
+			status.src_tests_passed = True
+			status.save()
 	except SafeException:
 		print "(leaving extracted directory for examination)"
 		fail_candidate(archive_file)
