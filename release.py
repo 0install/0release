@@ -475,7 +475,7 @@ def do_release(local_iface, options):
 	export_changelog(previous_release)
 
 	if status.tagged:
-		print "Already tagged, so resuming the publishing process..."
+		raw_input('Already tagged. Press Return to resume publishing process...')
 		choice = 'Publish'
 	else:
 		print "\nCandidate release archive:", archive_file
