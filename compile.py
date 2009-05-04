@@ -36,13 +36,16 @@ class Compiler:
 			else:
 				info("No builders.conf configuration; will build a binary for this host only")
 
-			builders = self.config.get('global', 'builders').strip()
+			if options.builders is not None:
+				builders = options.builders
+			else:
+				builders = self.config.get('global', 'builders').strip()
 			if builders:
 				self.targets = [x.strip() for x in builders.split(',')]
 				info("%d build targets configured: %s", len(self.targets), self.targets)
 			else:
 				self.targets = []
-				info("No builders set in configuration; no binaries will be built")
+				info("No builders set; no binaries will be built")
 		else:
 			self.targets = []
 

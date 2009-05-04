@@ -88,7 +88,7 @@ class TestRelease(unittest.TestCase):
 		support.check_call(['tar', 'xzf', test_repo_c])
 		make_releases_dir(src_feed = '../c-prog/c-prog.xml', auto_upload = True)
 
-		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE)
+		child = subprocess.Popen(['./make-release', '-k', 'Testing', '--builders=host'], stdin = subprocess.PIPE)
 		unused, unused = child.communicate('\nP\n\n')
 		assert child.returncode == 0
 

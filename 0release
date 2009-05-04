@@ -13,6 +13,7 @@ parser = OptionParser(usage = """usage: %prog [options] LOCAL-FEED
 
 Run this command from a new empty directory to set things up.""")
 
+parser.add_option("", "--builders", help="comma-separated list of builders for binaries", metavar='LIST')
 parser.add_option("", "--build-slave", help="compile a binary a source release candidate", action='store_true')
 parser.add_option("-k", "--key", help="GPG key to use for signing", action='store', metavar='KEYID')
 parser.add_option("-v", "--verbose", help="more verbose output", action='count')
