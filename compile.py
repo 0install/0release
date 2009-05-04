@@ -3,12 +3,13 @@
 
 import tempfile, shutil, subprocess, os
 import ConfigParser
+from logging import info
 from zeroinstall.injector import model
+from zeroinstall.support import basedir
 
 import support
 
 COMPILE = 'http://0install.net/2006/interfaces/0compile.xml'
-RELEASE = 'http://0install.net/2007/interfaces/0release.xml'
 
 class Compiler:
 	def __init__(self, options, src_feed_name):
@@ -17,9 +18,31 @@ class Compiler:
 		self.archive_dir_public_url = options.archive_dir_public_url
 		assert options.archive_dir_public_url
 
+		self.config = ConfigParser.RawConfigParser()
+
+		# Start with a default configuration
+		self.config.add_section('global')
+		self.config.set('global', 'builders', 'host')
+
+		self.config.add_section('builder-host')
+		self.config.set('builder-host', 'build', '0launch --not-before 0.9 http://0install.net/2007/interfaces/0release.xml --build-slave')
+
 		self.src_impl = support.get_singleton_impl(self.src_feed)
 		if self.src_impl.arch and self.src_impl.arch.endswith('-src'):
-			self.targets = ['host']
+			path = basedir.load_first_config('0install.net', '0release', 'builders.conf')
+			if path:
+				info("Loading configuration file '%s'", path)
+				self.config.read(path)
+			else:
+				info("No builders.conf configuration; will build a binary for this host only")
+
+			builders = self.config.get('global', 'builders').strip()
+			if builders:
+				self.targets = [x.strip() for x in builders.split(',')]
+				info("%d build targets configured: %s", len(self.targets), self.targets)
+			else:
+				self.targets = []
+				info("No builders set in configuration; no binaries will be built")
 		else:
 			self.targets = []
 
@@ -32,18 +55,23 @@ class Compiler:
 
 		archive_file = support.get_archive_basename(self.src_impl)
 
-		for arch in self.targets:
-			if arch == 'host':
-				command = ['0launch', '--not-before', '0.8-post', RELEASE, '--build-slave']
-			else:
-				command = ['0release-build', arch]
+		for target in self.targets:
+			start = self.get('builder-' + target, 'start', None)
+			command = self.config.get('builder-' + target, 'build')
+			stop = self.get('builder-' + target, 'stop', None)
 
-			binary_feed = 'binary-' + arch + '.xml'
+			binary_feed = 'binary-' + target + '.xml'
 			if os.path.exists(binary_feed):
 				print "Feed %s already exists; not rebuilding" % binary_feed
 			else:
-				print "\nBuilding binary for %s architecture...\n" % arch
-				subprocess.check_call(command + [self.src_feed_name, archive_file, self.archive_dir_public_url, binary_feed + '.new'])
+				print "\nBuilding binary with builder '%s' ...\n" % target
+
+				if start: support.show_and_run(start, [])
+				try:
+					support.show_and_run(command, [os.path.basename(self.src_feed_name), archive_file, self.archive_dir_public_url, binary_feed + '.new'])
+				finally:
+					if stop: support.show_and_run(stop, [])
+
 				bin_feed = support.load_feed(binary_feed + '.new')
 				bin_impl = support.get_singleton_impl(bin_feed)
 				bin_archive_file = support.get_archive_basename(bin_impl)
@@ -55,12 +83,19 @@ class Compiler:
 				os.rename(binary_feed + '.new', binary_feed)
 
 	def get_binary_feeds(self):
-		return ['binary-%s.xml' % arch for arch in self.targets]
+		return ['binary-%s.xml' % target for target in self.targets]
+
+	def get(self, section, option, default):
+		try:
+			return self.config.get(section, option)
+		except ConfigParser.NoOptionError:
+			return default
 
 # This is the actual build process, running on the build machine
 def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
 	feed = support.load_feed(src_feed)
 
+	src_feed = os.path.abspath(src_feed)
 	archive_file = os.path.abspath(archive_file)
 	target_feed = os.path.abspath(target_feed)
 
