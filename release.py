@@ -474,42 +474,46 @@ def do_release(local_iface, options):
 	previous_release = get_previous_release(status.release_version)
 	export_changelog(previous_release)
 
-	print "\nCandidate release archive:", archive_file
-	print "(extracted to %s for inspection)" % os.path.abspath(archive_name)
-
-	print "\nPlease check candidate and select an action:"
-	print "P) Publish candidate (accept)"
-	print "F) Fail candidate (untag)"
-	if previous_release:
-		print "D) Diff against release archive for %s" % previous_release
-		maybe_diff = ['Diff']
+	if status.tagged:
+		print "Already tagged, so resuming the publishing process..."
+		choice = 'Publish'
 	else:
-		maybe_diff = []
-	print "(you can also hit CTRL-C and resume this script when done)"
+		print "\nCandidate release archive:", archive_file
+		print "(extracted to %s for inspection)" % os.path.abspath(archive_name)
 
-	while True:
-		choice = support.get_choice(['Publish', 'Fail'] + maybe_diff)
-		if choice == 'Diff':
-			previous_archive_name = support.make_archive_name(local_iface.get_name(), previous_release)
-			previous_archive_file = '../%s/%s.tar.bz2' % (previous_release, previous_archive_name)
-
-			# For archives created by older versions of 0release
-			if not os.path.isfile(previous_archive_file):
-				old_previous_archive_file = '../%s.tar.bz2' % previous_archive_name
-				if os.path.isfile(old_previous_archive_file):
-					previous_archive_file = old_previous_archive_file
-
-			if os.path.isfile(previous_archive_file):
-				support.unpack_tarball(previous_archive_file)
-				try:
-					support.show_diff(previous_archive_name, archive_name)
-				finally:
-					shutil.rmtree(previous_archive_name)
-			else:
-				# TODO: download it?
-				print "Sorry, archive file %s not found! Can't show diff." % previous_archive_file
+		print "\nPlease check candidate and select an action:"
+		print "P) Publish candidate (accept)"
+		print "F) Fail candidate (untag)"
+		if previous_release:
+			print "D) Diff against release archive for %s" % previous_release
+			maybe_diff = ['Diff']
 		else:
-			break
+			maybe_diff = []
+		print "(you can also hit CTRL-C and resume this script when done)"
+
+		while True:
+			choice = support.get_choice(['Publish', 'Fail'] + maybe_diff)
+			if choice == 'Diff':
+				previous_archive_name = support.make_archive_name(local_iface.get_name(), previous_release)
+				previous_archive_file = '../%s/%s.tar.bz2' % (previous_release, previous_archive_name)
+
+				# For archives created by older versions of 0release
+				if not os.path.isfile(previous_archive_file):
+					old_previous_archive_file = '../%s.tar.bz2' % previous_archive_name
+					if os.path.isfile(old_previous_archive_file):
+						previous_archive_file = old_previous_archive_file
+
+				if os.path.isfile(previous_archive_file):
+					support.unpack_tarball(previous_archive_file)
+					try:
+						support.show_diff(previous_archive_name, archive_name)
+					finally:
+						shutil.rmtree(previous_archive_name)
+				else:
+					# TODO: download it?
+					print "Sorry, archive file %s not found! Can't show diff." % previous_archive_file
+			else:
+				break
 
 	info("Deleting extracted archive %s", archive_name)
 	shutil.rmtree(archive_name)
