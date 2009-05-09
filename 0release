@@ -7,7 +7,7 @@ import os, sys
 from zeroinstall import SafeException
 from zeroinstall.injector import reader, model
 
-version = '0.10'
+version = '0.10.1'
 
 parser = OptionParser(usage = """usage: %prog [options] LOCAL-FEED
 
