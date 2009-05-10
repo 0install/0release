@@ -1,6 +1,7 @@
 # Copyright (C) 2007, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 
+import copy
 import os, subprocess, shutil, tarfile
 import urlparse, ftplib, httplib
 from zeroinstall import SafeException
@@ -196,7 +197,12 @@ def get_size(url):
 def unpack_tarball(archive_file):
 	tar = tarfile.open(archive_file, 'r:bz2')
 	members = [m for m in tar.getmembers() if m.name != 'pax_global_header']
-	tar.extractall('.', members = members)
+	#tar.extractall('.', members = members) # Python >= 2.5 only
+	for tarinfo in members:
+		tarinfo = copy.copy(tarinfo)
+		tarinfo.mode |= 0600
+		tarinfo.mode &= 0755
+		tar.extract(tarinfo, '.')
 
 def load_feed(path):
 	stream = open(path)
@@ -206,7 +212,8 @@ def load_feed(path):
 		stream.close()
 
 def get_archive_basename(impl):
-	return os.path.basename(urlparse.urlparse(impl.download_sources[0].url).path)
+	# "2" means "path" (for Python 2.4)
+	return os.path.basename(urlparse.urlparse(impl.download_sources[0].url)[2])
 
 def relative_path(ancestor, dst):
 	stem = os.path.abspath(os.path.dirname(ancestor))

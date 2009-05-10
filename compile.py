@@ -126,8 +126,8 @@ def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
 		finally:
 			stream.close()
 
-		subprocess.check_call(['0launch', COMPILE, 'build'], cwd = tmpdir)
-		subprocess.check_call(['0launch', COMPILE, 'publish', '--target-feed', target_feed], cwd = tmpdir)
+		support.check_call(['0launch', COMPILE, 'build'], cwd = tmpdir)
+		support.check_call(['0launch', COMPILE, 'publish', '--target-feed', target_feed], cwd = tmpdir)
 
 		# TODO: run unit-tests
 
