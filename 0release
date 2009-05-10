@@ -4,6 +4,8 @@
 
 from optparse import OptionParser
 import os, sys
+
+sys.path.insert(1, os.environ['0RELEASE_ZEROINSTALL'])
 from zeroinstall import SafeException
 from zeroinstall.injector import reader, model
 

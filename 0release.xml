@@ -22,6 +22,10 @@
       <version not-before="0.13"/>
       <environment insert="0publish" mode="replace" name="0PUBLISH"/>
     </requires>
+    <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml">
+      <version not-before="0.40"/>
+      <environment insert="" mode="replace" name="0RELEASE_ZEROINSTALL"/>
+    </requires>
     <implementation id="." version="0.10.1-post"/>
   </group>
 </interface>
