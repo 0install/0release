@@ -26,6 +26,12 @@ def run_unit_tests(local_feed, impl):
 	if exitstatus:
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
 
+def get_archive_url(options, status, archive):
+	archive_dir_public_url = options.archive_dir_public_url.replace('$VERSION', status.release_version)
+	if not archive_dir_public_url.endswith('/'):
+		archive_dir_public_url += '/'
+	return archive_dir_public_url + archive
+
 def upload_archives(options, status, uploads):
 	# For each binary or source archive in uploads, ensure it is available
 	# from options.archive_dir_public_url
@@ -34,13 +40,8 @@ def upload_archives(options, status, uploads):
 	# afterwards. This is because we may have to wait for them to be moved
 	# from an incoming queue before we can test them.
 
-	# Ensure URL stem ends with a slash
-	archive_dir_public_url = options.archive_dir_public_url
-	if not archive_dir_public_url.endswith('/'):
-		archive_dir_public_url += '/'
-
 	def url(archive):
-		return archive_dir_public_url + archive
+		return get_archive_url(options, status, archive)
 
 	# Check that url exists and has the given size
 	def is_uploaded(url, size):
@@ -235,7 +236,7 @@ def do_release(local_iface, options):
 
 		support.publish(target_feed,
 			set_main = main,
-			archive_url = options.archive_dir_public_url + '/' + os.path.basename(archive_file),
+			archive_url = get_archive_url(options, status, os.path.basename(archive_file)),
 			archive_file = archive_file,
 			archive_extract = archive_name)
 	
@@ -388,6 +389,9 @@ def do_release(local_iface, options):
 		set_to_release()	# Changes directory
 		assert status.release_version
 		need_set_snapshot = True
+
+	# May be needed by the upload command
+	os.environ['VERSION'] = status.release_version
 
 	archive_name = support.make_archive_name(local_iface.get_name(), status.release_version)
 	archive_file = archive_name + '.tar.bz2'
