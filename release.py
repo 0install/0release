@@ -27,7 +27,7 @@ def run_unit_tests(local_feed, impl):
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
 
 def get_archive_url(options, status, archive):
-	archive_dir_public_url = options.archive_dir_public_url.replace('$VERSION', status.release_version)
+	archive_dir_public_url = options.archive_dir_public_url.replace('$RELEASE_VERSION', status.release_version)
 	if not archive_dir_public_url.endswith('/'):
 		archive_dir_public_url += '/'
 	return archive_dir_public_url + archive
@@ -391,7 +391,7 @@ def do_release(local_iface, options):
 		need_set_snapshot = True
 
 	# May be needed by the upload command
-	os.environ['VERSION'] = status.release_version
+	os.environ['RELEASE_VERSION'] = status.release_version
 
 	archive_name = support.make_archive_name(local_iface.get_name(), status.release_version)
 	archive_file = archive_name + '.tar.bz2'

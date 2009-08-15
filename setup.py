@@ -24,7 +24,7 @@ def init_releases_directory(iface):
 
 # The directory people will download the releases from.
 # This will appear in the remote feed file.
-#ARCHIVE_DIR_PUBLIC_URL='http://placeholder.org/releases/$VERSION'
+#ARCHIVE_DIR_PUBLIC_URL='http://placeholder.org/releases/$RELEASE_VERSION'
 ARCHIVE_DIR_PUBLIC_URL=
 
 # The path to the main feed.
@@ -36,7 +36,7 @@ MASTER_FEED_FILE="%s"
 # public server (corresponds to $ARCHIVE_DIR_PUBLIC_URL, which is
 # used to download it again).
 # If unset, you'll have to upload it yourself.
-#ARCHIVE_UPLOAD_COMMAND='scp "$@" me@myhost:/var/www/releases/$VERSION/'
+#ARCHIVE_UPLOAD_COMMAND='scp "$@" me@myhost:/var/www/releases/$RELEASE_VERSION/'
 ARCHIVE_UPLOAD_COMMAND=
 
 # A shell command to upload the master feed ($MASTER_FEED_FILE) and
