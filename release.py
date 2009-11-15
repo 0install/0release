@@ -20,9 +20,8 @@ def run_unit_tests(local_feed, impl):
 	if self_test is None:
 		print "SKIPPING unit tests for %s (no 'self-test' attribute set)" % impl
 		return
-	self_test_dir = os.path.dirname(os.path.join(impl.id, self_test))
 	print "Running self-test:", self_test
-	exitstatus = subprocess.call(['0launch', '--main', self_test, local_feed], cwd = self_test_dir)
+	exitstatus = subprocess.call(['0launch', 'http://0install.net/2008/interfaces/0test.xml', local_feed])
 	if exitstatus:
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
 
