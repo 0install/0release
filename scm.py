@@ -3,7 +3,7 @@
 
 import os, subprocess, tempfile
 from zeroinstall import SafeException
-from logging import info
+from logging import info, warn
 from support import unpack_tarball
 
 class SCM:
@@ -137,7 +137,11 @@ class GIT(SCM):
 			self._run_check(['log', head], stdout = stream)
 
 	def grep(self, pattern):
-		self._run_check(['grep', pattern])
+		child = self._run(['grep', pattern])
+		child.wait()
+		if child.returncode in [0, 1]:
+			return
+		warn("git grep returned exit code %d", proc.returncode)
 
 	def has_submodules(self):
 		return os.path.isfile(os.path.join(self.root_dir, '.gitmodules'))
