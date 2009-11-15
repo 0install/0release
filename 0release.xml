@@ -26,6 +26,6 @@
       <version not-before="0.40"/>
       <environment insert="" mode="replace" name="0RELEASE_ZEROINSTALL"/>
     </requires>
-    <implementation id="." version="0.11-post"/>
+    <implementation id="." released="2009-11-15" version="0.11.1"/>
   </group>
 </interface>
