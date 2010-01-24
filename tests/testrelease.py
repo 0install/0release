@@ -1,4 +1,4 @@
-#!/usr/bin/env python2.5
+#!/usr/bin/env python
 # Copyright (C) 2007, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 import sys, os, shutil, tempfile, subprocess
@@ -54,7 +54,7 @@ class TestRelease(unittest.TestCase):
 		assert child.returncode == 0
 
 		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE)
-		unused, unused = child.communicate('\nP\n\n')
+		unused, unused = child.communicate('\nP\nY\n\n')
 		assert child.returncode == 0
 
 		assert 'Prints "Hello World"' in file('0.1/changelog-0.1').read()

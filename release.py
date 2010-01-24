@@ -271,7 +271,7 @@ def do_release(local_iface, options):
 		scm.delete_branch(TMP_BRANCH_NAME)
 		os.unlink(support.release_status_file)
 		print "Restored to state before starting release. Make your fixes and try again..."
-	
+
 	def accept_and_publish(archive_file, archive_name, src_feed_name):
 		assert options.master_feed_file
 
@@ -298,6 +298,7 @@ def do_release(local_iface, options):
 		if status.updated_master_feed:
 			print "Already added to master feed. Not changing."
 		else:
+			publish_opts = {}
 			if os.path.exists(options.master_feed_file):
 				# Check we haven't already released this version
 				master = model.Interface(os.path.realpath(options.master_feed_file))
@@ -306,6 +307,15 @@ def do_release(local_iface, options):
 				if len(existing_releases):
 					raise SafeException("Master feed %s already contains an implementation with version number %s!" % (options.master_feed_file, status.release_version))
 
+				previous_release = get_previous_release(status.release_version)
+				previous_testing_releases = [impl for impl in master.implementations.values() if impl.get_version() == previous_release
+													     and impl.upstream_stability == model.stability_levels["testing"]]
+				if previous_testing_releases:
+					print "The previous release, version %s, is still marked as 'testing'. Set to stable?" % previous_release
+					if support.get_choice(['Yes', 'No']) == 'Yes':
+						publish_opts['select_version'] = previous_release
+						publish_opts['set_stability'] = "stable"
+
 			# Merge the source and binary feeds together first, so
 			# that we update the master feed atomically and only
 			# have to sign it once.
@@ -313,7 +323,7 @@ def do_release(local_iface, options):
 			for b in compiler.get_binary_feeds():
 				support.publish('merged.xml', local = b)
 
-			support.publish(options.master_feed_file, local = 'merged.xml', xmlsign = True, key = options.key)
+			support.publish(options.master_feed_file, local = 'merged.xml', xmlsign = True, key = options.key, **publish_opts)
 			os.unlink('merged.xml')
 
 			status.updated_master_feed = 'true'
