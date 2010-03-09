@@ -41,12 +41,21 @@ class GIT(SCM):
 		self._run_check(['reset', '--hard', revision])
 
 	def ensure_committed(self):
-		child = self._run(["status", "-a"], stdout = subprocess.PIPE)
+		child = self._run(["status", "--porcelain", "-uno"], stdout = subprocess.PIPE)
 		stdout, unused = child.communicate()
-		if not child.returncode:
-			raise SafeException('Uncommitted changes! Use "git-commit -a" to commit them. Changes are:\n' + stdout)
-		for scm in self._submodules():
-			scm.ensure_committed()
+		if child.returncode == 0:
+			# Git >= 1.7
+			if stdout.strip():
+				raise SafeException('Uncommitted changes! Use "git-commit -a" to commit them. Changes are:\n' + stdout)
+			return
+		else:
+			# Old Git
+			child = self._run(["status", "-a"], stdout = subprocess.PIPE)
+			stdout, unused = child.communicate()
+			if not child.returncode:
+				raise SafeException('Uncommitted changes! Use "git-commit -a" to commit them. Changes are:\n' + stdout)
+			for scm in self._submodules():
+				scm.ensure_committed()
 
 	def _submodules(self):
 		for line in self._run_stdout(['submodule', 'status']).split('\n'):
