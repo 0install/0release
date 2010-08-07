@@ -132,6 +132,9 @@ def do_release(local_iface, options):
 	if not options.archive_dir_public_url:
 		raise SafeException("Downloads directory not set. Edit the 'make-release' script and try again.")
 
+	if not local_iface.feed_for:
+		raise SafeException("Feed %s missing a <feed-for> element" % local_iface.uri)
+
 	status = support.Status()
 	local_impl = support.get_singleton_impl(local_iface)
 
