@@ -19,7 +19,7 @@
 
   <group license="OSI Approved :: GNU Lesser General Public License (LGPL)" main="0release" self-test="tests/testall.py">
     <requires interface="http://0install.net/2006/interfaces/0publish">
-      <version not-before="0.16-post"/>
+      <version not-before="0.17"/>
       <environment insert="0publish" mode="replace" name="0PUBLISH"/>
     </requires>
     <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml">
