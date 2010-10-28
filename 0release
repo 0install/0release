@@ -5,7 +5,9 @@
 from optparse import OptionParser
 import os, sys
 
-sys.path.insert(1, os.environ['0RELEASE_ZEROINSTALL'])
+zi = os.environ.get("0RELEASE_ZEROINSTALL", None)
+if zi is not None:
+	sys.path.insert(0, zi)
 from zeroinstall import SafeException
 from zeroinstall.injector import reader, model
 
