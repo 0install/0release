@@ -7,7 +7,9 @@ import os, sys
 
 zi = os.environ.get("0RELEASE_ZEROINSTALL", None)
 if zi is not None:
-	sys.path.insert(0, zi)
+	# NOT the first element... that's us!
+	# (and we want our setup.py, not 0install's)
+	sys.path.insert(1, zi)
 from zeroinstall import SafeException
 from zeroinstall.injector import reader, model
 
