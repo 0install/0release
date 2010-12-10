@@ -16,9 +16,20 @@ test_repo_actions = mydir + '/test-repo-actions.tgz'
 test_repo_c = mydir + '/c-prog.tgz'
 test_gpg = mydir + '/gpg.tgz'
 
+def call_with_output_suppressed(cmd, stdin, expect_failure = False, **kwargs):
+	if stdin:
+		child = subprocess.Popen(cmd, stdin = subprocess.PIPE, stdout = subprocess.PIPE, **kwargs)
+	else:
+		child = subprocess.Popen(cmd, stdout = subprocess.PIPE, **kwargs)
+	stdout, stderr  = child.communicate(stdin)
+	if (child.returncode != 0) == expect_failure:
+		return stdout, stderr
+	print stdout
+	raise Exception("Return code %d" % child.returncode)
+
 def make_releases_dir(src_feed = '../hello/HelloWorld.xml', auto_upload = False):
 	os.chdir('releases')
-	support.check_call(['0launch', release_feed, src_feed])
+	call_with_output_suppressed(['0launch', release_feed, src_feed], None)
 	assert os.path.isfile('make-release')
 
 	lines = file('make-release').readlines()
@@ -49,13 +60,9 @@ class TestRelease(unittest.TestCase):
 		support.check_call(['tar', 'xzf', test_repo])
 		make_releases_dir()
 
-		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE)
-		unused, unused = child.communicate('\nP\n\n')
-		assert child.returncode == 0
+		call_with_output_suppressed(['./make-release', '-k', 'Testing'], '\nP\n\n')
 
-		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE)
-		unused, unused = child.communicate('\nP\nY\n\n')
-		assert child.returncode == 0
+		call_with_output_suppressed(['./make-release', '-k', 'Testing'], '\nP\nY\n\n')
 
 		assert 'Prints "Hello World"' in file('0.1/changelog-0.1').read()
 		assert 'Prints "Hello World"' not in file('0.2/changelog-0.2').read()
@@ -64,21 +71,20 @@ class TestRelease(unittest.TestCase):
 		support.check_call(['tar', 'xzf', test_repo_actions])
 		make_releases_dir()
 
-		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE, stderr = subprocess.PIPE)
-		unused, stderr = child.communicate()
-		assert child.returncode != 0
+		unused, stderr = call_with_output_suppressed(['./make-release', '-k', 'Testing'], None,
+							expect_failure = True, stderr = subprocess.PIPE)
 		assert "Uncommitted changes!" in stderr
 
 	def testActions(self):
 		support.check_call(['tar', 'xzf', test_repo_actions])
 		os.chdir('hello')
-		support.check_call(['git', 'commit', '-a', '-m', 'Added release instructions'])
+		support.check_call(['git', 'commit', '-a', '-m', 'Added release instructions'], stdout = subprocess.PIPE)
 		os.chdir('..')
 		make_releases_dir()
 
 		assert "version = '0.2'\n" not in file('../hello/hello.py').read()
 
-		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE)
+		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE, stdout = subprocess.PIPE)
 		unused, unused = child.communicate('\nP\n\n')
 		assert child.returncode == 0
 
@@ -88,9 +94,7 @@ class TestRelease(unittest.TestCase):
 		support.check_call(['tar', 'xzf', test_repo_c])
 		make_releases_dir(src_feed = '../c-prog/c-prog.xml', auto_upload = True)
 
-		child = subprocess.Popen(['./make-release', '-k', 'Testing', '--builders=host'], stdin = subprocess.PIPE)
-		unused, unused = child.communicate('\nP\n\n')
-		assert child.returncode == 0
+		call_with_output_suppressed(['./make-release', '-k', 'Testing', '--builders=host'], '\nP\n\n')
 
 		feed = model.ZeroInstallFeed(qdom.parse(file('HelloWorld-in-C.xml')))
 
@@ -116,5 +120,4 @@ class TestRelease(unittest.TestCase):
 
 suite = unittest.makeSuite(TestRelease)
 if __name__ == '__main__':
-	sys.argv.append('-v')
 	unittest.main()
