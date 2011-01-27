@@ -15,13 +15,14 @@ valid_phases = ['commit-release', 'generate-archive']
 
 TMP_BRANCH_NAME = '0release-tmp'
 
-def run_unit_tests(local_feed, impl):
-	self_test = impl.metadata.get('self-test', None)
-	if self_test is None:
-		print "SKIPPING unit tests for %s (no 'self-test' attribute set)" % impl
+test_command = os.environ['0TEST']
+
+def run_unit_tests(local_feed):
+	print "Running self-tests..."
+	exitstatus = subprocess.call([test_command, '--', local_feed])
+	if exitstatus == 2:
+		print "SKIPPED unit tests for %s (no 'self-test' attribute set)" % local_feed
 		return
-	print "Running self-test:", self_test
-	exitstatus = subprocess.call(['0launch', 'http://0install.net/2008/interfaces/0test.xml', local_feed])
 	if exitstatus:
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
 
@@ -466,7 +467,7 @@ def do_release(local_iface, options):
 		if status.src_tests_passed:
 			print "Unit-tests already passed - not running again"
 		else:
-			run_unit_tests(extracted_iface_path, extracted_impl)
+			run_unit_tests(extracted_iface_path)
 			status.src_tests_passed = True
 			status.save()
 	except SafeException:

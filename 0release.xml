@@ -26,6 +26,10 @@
       <version not-before="0.40"/>
       <environment insert="" mode="replace" name="0RELEASE_ZEROINSTALL"/>
     </requires>
+    <requires interface="http://0install.net/2008/interfaces/0test.xml">
+      <version not-before='0.4-post'/>
+      <environment insert='0test' name='0TEST' mode='replace'/>
+    </requires>
     <implementation id="." version="0.12-post"/>
   </group>
 </interface>

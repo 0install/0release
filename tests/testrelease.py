@@ -17,6 +17,7 @@ test_repo_c = mydir + '/c-prog.tgz'
 test_gpg = mydir + '/gpg.tgz'
 
 def call_with_output_suppressed(cmd, stdin, expect_failure = False, **kwargs):
+	#cmd = [cmd[0], '-v'] + cmd[1:]
 	if stdin:
 		child = subprocess.Popen(cmd, stdin = subprocess.PIPE, stdout = subprocess.PIPE, **kwargs)
 	else:
@@ -24,8 +25,8 @@ def call_with_output_suppressed(cmd, stdin, expect_failure = False, **kwargs):
 	stdout, stderr  = child.communicate(stdin)
 	if (child.returncode != 0) == expect_failure:
 		return stdout, stderr
-	print stdout
-	raise Exception("Return code %d" % child.returncode)
+	#print stdout, stderr
+	raise Exception("Return code %d from %s\nstdout: %s\nstderr: %s" % (child.returncode, cmd, stdout, stderr))
 
 def make_releases_dir(src_feed = '../hello/HelloWorld.xml', auto_upload = False):
 	os.chdir('releases')
