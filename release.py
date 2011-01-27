@@ -458,8 +458,11 @@ def do_release(local_iface, options):
 		main = support.relative_path(archive_name + '/', abs_main)
 		if main != extracted_impl.main:
 			print "(adjusting main: '%s' for the feed inside the archive, '%s' externally)" % (extracted_impl.main, main)
+			# XXX: this is going to fail if the feed uses the new <command> syntax
 		if not os.path.exists(abs_main):
 			raise SafeException("Main executable '%s' not found after unpacking archive!" % abs_main)
+		if main == extracted_impl.main:
+			main = None	# Don't change the main attribute
 	else:
 		main = None
 
