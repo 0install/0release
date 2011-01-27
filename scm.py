@@ -95,7 +95,7 @@ class GIT(SCM):
 		stdout, unused = child.communicate()
 		if tag in stdout.split('\n'):
 			raise SafeException(("Release %s is already tagged! If you want to replace it, do\n" + 
-						"git-tag -d %s") % (version, tag))
+						"git tag -d %s") % (version, tag))
 
 	def export(self, prefix, archive_file, revision):
 		child = self._run(['archive', '--format=tar', '--prefix=' + prefix + '/', revision], stdout = subprocess.PIPE)
