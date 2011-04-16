@@ -16,6 +16,14 @@ test_repo_actions = mydir + '/test-repo-actions.tgz'
 test_repo_c = mydir + '/c-prog.tgz'
 test_gpg = mydir + '/gpg.tgz'
 
+test_config = """
+[global]
+freshness = 0
+auto_approve_keys = True
+help_with_testing = True
+network_use = full
+"""
+
 def call_with_output_suppressed(cmd, stdin, expect_failure = False, **kwargs):
 	#cmd = [cmd[0], '-v'] + cmd[1:]
 	if stdin:
@@ -52,6 +60,14 @@ class TestRelease(unittest.TestCase):
 		os.mkdir('releases')
 		os.environ['GNUPGHOME'] = self.tmp + '/gpg'
 		os.chmod(os.environ['GNUPGHOME'], 0700)
+
+		config_dir = os.path.join(self.tmp, 'config')
+		injector_config = os.path.join(config_dir, '0install.net', 'injector')
+		os.makedirs(injector_config)
+		s = open(os.path.join(injector_config, 'global'), 'w')
+		s.write(test_config)
+		s.close()
+		os.environ['XDG_CONFIG_HOME'] = config_dir
 	
 	def tearDown(self):
 		os.chdir(mydir)
