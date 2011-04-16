@@ -17,7 +17,17 @@
     <release:action phase="commit-release">sed -i &quot;s/^version = '.*'$/version = '$RELEASE_VERSION'/&quot; 0release</release:action>
   </release:management>
 
-  <group license="OSI Approved :: GNU Lesser General Public License (LGPL)" main="0release" self-test="tests/testall.py">
+  <group license="OSI Approved :: GNU Lesser General Public License (LGPL)" main="0release">
+    <command name='run' path='0release'>
+      <runner interface='http://repo.roscidus.com/python/python'>
+	<version before='3'/>
+      </runner>
+    </command>
+    <command name="test" path="tests/testall.py">
+      <runner interface='http://repo.roscidus.com/python/python'>
+	<version before='3'/>
+      </runner>
+    </command>
     <requires interface="http://0install.net/2006/interfaces/0publish">
       <version not-before="0.17"/>
       <environment insert="0publish" mode="replace" name="0PUBLISH"/>
