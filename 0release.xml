@@ -18,14 +18,14 @@
   </release:management>
 
   <group license="OSI Approved :: GNU Lesser General Public License (LGPL)" main="0release">
-    <command name='run' path='0release'>
-      <runner interface='http://repo.roscidus.com/python/python'>
-	<version before='3'/>
+    <command name="run" path="0release">
+      <runner interface="http://repo.roscidus.com/python/python">
+	<version before="3"/>
       </runner>
     </command>
     <command name="test" path="tests/testall.py">
-      <runner interface='http://repo.roscidus.com/python/python'>
-	<version before='3'/>
+      <runner interface="http://repo.roscidus.com/python/python">
+	<version before="3"/>
       </runner>
     </command>
     <requires interface="http://0install.net/2006/interfaces/0publish">
@@ -37,9 +37,9 @@
       <environment insert="" mode="replace" name="0RELEASE_ZEROINSTALL"/>
     </requires>
     <requires interface="http://0install.net/2008/interfaces/0test.xml">
-      <version not-before='0.4-post'/>
-      <environment insert='0test' name='0TEST' mode='replace'/>
+      <version not-before="0.4-post"/>
+      <environment insert="0test" mode="replace" name="0TEST"/>
     </requires>
-    <implementation id="." version="0.12-post"/>
+    <implementation id="." released="2011-04-18" version="0.13"/>
   </group>
 </interface>

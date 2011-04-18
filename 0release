@@ -13,7 +13,7 @@ if zi is not None:
 from zeroinstall import SafeException
 from zeroinstall.injector import reader, model
 
-version = '0.12'
+version = '0.13'
 
 parser = OptionParser(usage = """usage: %prog [options] LOCAL-FEED
 
