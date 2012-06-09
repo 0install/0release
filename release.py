@@ -4,6 +4,7 @@
 import os, sys, subprocess, shutil, tempfile
 from zeroinstall import SafeException
 from zeroinstall.injector import reader, model, qdom
+from zeroinstall.support import ro_rmtree
 from logging import info, warn
 
 import support, compile
@@ -470,6 +471,9 @@ def do_release(local_iface, options):
 		if status.src_tests_passed:
 			print "Unit-tests already passed - not running again"
 		else:
+			# Make directories read-only (checks tests don't write)
+			support.make_readonly_recursive(archive_name)
+
 			run_unit_tests(extracted_iface_path)
 			status.src_tests_passed = True
 			status.save()
@@ -478,7 +482,7 @@ def do_release(local_iface, options):
 		fail_candidate(archive_file)
 		raise
 	# Unpack it again in case the unit-tests changed anything
-	shutil.rmtree(archive_name)
+	ro_rmtree(archive_name)
 	support.unpack_tarball(archive_file)
 
 	# Generate feed for source

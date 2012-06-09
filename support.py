@@ -225,3 +225,10 @@ def relative_path(ancestor, dst):
 
 assert relative_path('/foo', '/foo') == 'foo'
 assert relative_path('/foo', '/foo/bar') == 'foo/bar'
+
+def make_readonly_recursive(path):
+	for root, dirs, files in os.walk(path):
+		for d in dirs + files:
+			full = os.path.join(root, d)
+			mode = os.stat(full).st_mode
+			os.chmod(full, mode & 0o555)
