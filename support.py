@@ -2,10 +2,11 @@
 # See the README file for details, or visit http://0install.net.
 
 import copy
-import os, subprocess, shutil, tarfile
+import os, subprocess, tarfile
 import urlparse, ftplib, httplib
 from zeroinstall import SafeException
 from zeroinstall.injector import model, qdom
+from zeroinstall.support import ro_rmtree
 from logging import info
 
 release_status_file = os.path.abspath('release-status')
@@ -69,7 +70,7 @@ def backup_if_exists(name):
 	if os.path.exists(backup):
 		print "(deleting old backup %s)" % backup
 		if os.path.isdir(backup):
-			shutil.rmtree(backup)
+			ro_rmtree(backup)
 		else:
 			os.unlink(backup)
 	os.rename(name, backup)
