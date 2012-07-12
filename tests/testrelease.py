@@ -129,7 +129,7 @@ class TestRelease(unittest.TestCase):
 		host_archive = os.path.basename(host_download.url)
 		assert host_archive in archives
 		support.check_call(['tar', 'xjf', os.path.join('archives', host_archive)])
-		c = subprocess.Popen(['0launch', os.path.join(host_download.extract, '0install', 'helloworld-in-c-1.1.xml')], stdout = subprocess.PIPE)
+		c = subprocess.Popen(['0launch', os.path.join(host_download.extract, '0install', 'feed.xml')], stdout = subprocess.PIPE)
 		output, _ = c.communicate()
 
 		self.assertEquals("Hello from C! (version 1.1)\n", output)
