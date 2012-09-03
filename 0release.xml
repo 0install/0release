@@ -27,6 +27,7 @@
       <runner interface="http://repo.roscidus.com/python/python">
 	<version before="3"/>
       </runner>
+      <executable-in-path name='0release'/>
     </command>
     <requires interface="http://0install.net/2006/interfaces/0publish">
       <version not-before="0.17"/>
