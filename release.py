@@ -250,8 +250,7 @@ def do_release(local_feed, options):
 		parsed_release_version = model.parse_version(this_version)
 
 		if os.path.exists(options.master_feed_file):
-			master = model.Interface(os.path.realpath(options.master_feed_file))
-			reader.update(master, master.uri, local = True)
+			master = support.load_feed(options.master_feed_file)
 			versions = [impl.version for impl in master.implementations.values() if impl.version < parsed_release_version]
 			if versions:
 				return model.format_version(max(versions))
@@ -306,8 +305,7 @@ def do_release(local_feed, options):
 			publish_opts = {}
 			if os.path.exists(options.master_feed_file):
 				# Check we haven't already released this version
-				master = model.Interface(os.path.realpath(options.master_feed_file))
-				reader.update(master, master.uri, local = True)
+				master = support.load_feed(os.path.realpath(options.master_feed_file))
 				existing_releases = [impl for impl in master.implementations.values() if impl.get_version() == status.release_version]
 				if len(existing_releases):
 					raise SafeException("Master feed %s already contains an implementation with version number %s!" % (options.master_feed_file, status.release_version))
@@ -337,9 +335,7 @@ def do_release(local_feed, options):
 		# Copy files...
 		uploads = [os.path.basename(archive_file)]
 		for b in compiler.get_binary_feeds():
-			stream = file(b)
-			binary_feed = model.ZeroInstallFeed(qdom.parse(stream), local_path = b)
-			stream.close()
+			binary_feed = support.load_feed(b)
 			impl, = binary_feed.implementations.values()
 			uploads.append(os.path.basename(impl.download_sources[0].url))
 
@@ -447,15 +443,14 @@ def do_release(local_feed, options):
 	#backup_if_exists(archive_name)
 	support.unpack_tarball(archive_file)
 
-	extracted_iface_path = os.path.abspath(os.path.join(export_prefix, local_iface_rel_root_path))
-	assert os.path.isfile(extracted_iface_path), "Local feed not in archive! Is it under version control?"
-	extracted_iface = model.Interface(extracted_iface_path)
-	reader.update(extracted_iface, extracted_iface_path, local = True)
-	extracted_impl = support.get_singleton_impl(extracted_iface)
+	extracted_feed_path = os.path.abspath(os.path.join(export_prefix, local_iface_rel_root_path))
+	assert os.path.isfile(extracted_feed_path), "Local feed not in archive! Is it under version control?"
+	extracted_feed = support.load_feed(extracted_feed_path)
+	extracted_impl = support.get_singleton_impl(extracted_feed)
 
 	if extracted_impl.main:
 		# Find main executable, relative to the archive root
-		abs_main = os.path.join(os.path.dirname(extracted_iface_path), extracted_impl.id, extracted_impl.main)
+		abs_main = os.path.join(os.path.dirname(extracted_feed_path), extracted_impl.id, extracted_impl.main)
 		main = support.relative_path(archive_name + '/', abs_main)
 		if main != extracted_impl.main:
 			print "(adjusting main: '%s' for the feed inside the archive, '%s' externally)" % (extracted_impl.main, main)
@@ -474,7 +469,7 @@ def do_release(local_feed, options):
 			# Make directories read-only (checks tests don't write)
 			support.make_readonly_recursive(archive_name)
 
-			run_unit_tests(extracted_iface_path)
+			run_unit_tests(extracted_feed_path)
 			status.src_tests_passed = True
 			status.save()
 	except SafeException:
@@ -486,9 +481,9 @@ def do_release(local_feed, options):
 	support.unpack_tarball(archive_file)
 
 	# Generate feed for source
-	stream = open(extracted_iface_path)
+	stream = open(extracted_feed_path)
 	src_feed_name = '%s.xml' % archive_name
-	create_feed(src_feed_name, extracted_iface_path, archive_file, archive_name, main)
+	create_feed(src_feed_name, extracted_feed_path, archive_file, archive_name, main)
 	print "Wrote source feed as %s" % src_feed_name
 
 	# If it's a source package, compile the binaries now...

@@ -208,11 +208,8 @@ def unpack_tarball(archive_file):
 		tar.extract(tarinfo, '.')
 
 def load_feed(path):
-	stream = open(path)
-	try:
+	with open(path, 'rb') as stream:
 		return model.ZeroInstallFeed(qdom.parse(stream), local_path = path)
-	finally:
-		stream.close()
 
 def get_archive_basename(impl):
 	# "2" means "path" (for Python 2.4)

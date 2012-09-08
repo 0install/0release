@@ -73,7 +73,8 @@ try:
 	with open(local_feed_path, 'rb') as stream:
 		root = qdom.parse(stream)
 
-	feed = model.ZeroInstallFeed(root, local_path = local_feed_path)
+	import support
+	feed = support.load_feed(local_feed_path)
 
 	if options.release:
 		import release
