@@ -44,6 +44,14 @@ def make_releases_dir(src_feed = '../hello/HelloWorld.xml', auto_upload = False)
 	lines = file('make-release').readlines()
 	lines[lines.index('ARCHIVE_DIR_PUBLIC_URL=\n')] = 'ARCHIVE_DIR_PUBLIC_URL=http://TESTING/releases\n'
 
+	# Force us to test against this version of 0release
+	for i, line in enumerate(lines):
+		if line.startswith('exec 0launch http://0install.net/2007/interfaces/0release.xml --release'):
+			lines[i] = '0release --release ' + line.split('--release ', 1)[1]
+			break
+	else:
+		assert 0
+
 	if auto_upload:
 		os.mkdir('archives')
 		lines[lines.index('ARCHIVE_UPLOAD_COMMAND=\n')] = 'ARCHIVE_UPLOAD_COMMAND=\'cp "$@" ../archives/\'\n'
