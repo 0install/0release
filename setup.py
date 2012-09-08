@@ -10,14 +10,14 @@ release_uri = 'http://0install.net/2007/interfaces/0release.xml'
 umask = os.umask(0)
 os.umask(umask)
 
-def init_releases_directory(iface):
+def init_releases_directory(feed):
 	files = os.listdir('.')
 	if files:
 		raise SafeException("This command must be run from an empty directory!\n(this one contains %s)" % (', '.join(files[:5])))
 
-	print "Setting up releases directory for %s" % iface.get_name()
+	print "Setting up releases directory for %s" % feed.get_name()
 
-	master_feed_name = iface.get_name().replace(' ', '-') + '.xml'
+	master_feed_name = feed.get_name().replace(' ', '-') + '.xml'
 
 	make_release = file('make-release', 'w')
 	make_release.write("""#!/bin/sh
@@ -60,7 +60,7 @@ exec 0launch %s --release %s \\
  --master-feed-upload-command="$MASTER_FEED_UPLOAD_COMMAND" \\
  --public-scm-repository="$PUBLIC_SCM_REPOSITORY" \\
  "$@"
-""" % (master_feed_name, release_uri, iface.uri))
+""" % (master_feed_name, release_uri, feed.local_path))
 	make_release.close()
 	os.chmod('make-release', 0775 & ~umask)
 	print "Success - created script:\n %s\nNow edit it with your local settings." % os.path.abspath('make-release')

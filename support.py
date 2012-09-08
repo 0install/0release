@@ -45,7 +45,7 @@ def suggest_release_version(snapshot_version):
 	version[-1] = 0	# Remove the modifier
 	return model.format_version(version)
 
-def publish(iface, **kwargs):
+def publish(feed_path, **kwargs):
 	args = [os.environ['0PUBLISH']]
 	for k in kwargs:
 		value = kwargs[k] 
@@ -53,14 +53,16 @@ def publish(iface, **kwargs):
 			args += ['--' + k.replace('_', '-')]
 		elif value is not None:
 			args += ['--' + k.replace('_', '-'), value]
-	args.append(iface)
+	args.append(feed_path)
 	info("Executing %s", args)
 	check_call(args)
 
-def get_singleton_impl(iface):
-	impls = iface.implementations
+def get_singleton_impl(feed):
+	if isinstance(feed, model.Interface):
+		feed = feed._main_feed
+	impls = feed.implementations
 	if len(impls) != 1:
-		raise SafeException("Local feed '%s' contains %d versions! I need exactly one!" % (iface.uri, len(impls)))
+		raise SafeException("Local feed '%s' contains %d versions! I need exactly one!" % (feed.url, len(impls)))
 	return impls.values()[0]
 
 def backup_if_exists(name):

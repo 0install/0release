@@ -155,8 +155,8 @@ class GIT(SCM):
 	def has_submodules(self):
 		return os.path.isfile(os.path.join(self.root_dir, '.gitmodules'))
 
-def get_scm(local_iface, options):
-	start_dir = os.path.dirname(os.path.abspath(local_iface.uri))
+def get_scm(local_feed, options):
+	start_dir = os.path.dirname(os.path.abspath(local_feed.local_path))
 	current = start_dir
 	while True:
 		if os.path.exists(os.path.join(current, '.git')):

@@ -34,7 +34,7 @@
       <environment insert="0publish" mode="replace" name="0PUBLISH"/>
     </requires>
     <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml">
-      <version not-before="0.40"/>
+      <version not-before="1.6"/>
       <environment insert="" mode="replace" name="0RELEASE_ZEROINSTALL"/>
     </requires>
     <requires interface="http://0install.net/2008/interfaces/0test.xml">

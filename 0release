@@ -11,7 +11,7 @@ if zi is not None:
 	# (and we want our setup.py, not 0install's)
 	sys.path.insert(1, zi)
 from zeroinstall import SafeException
-from zeroinstall.injector import reader, model
+from zeroinstall.injector import reader, model, qdom
 
 version = '0.13'
 
@@ -64,21 +64,23 @@ if len(args) != 1:
 	parser.print_help()
 	sys.exit(1)
 
-local_feed_path = args[0]
+local_feed_path = os.path.abspath(args[0])
 
 try:
 	if not os.path.exists(local_feed_path):
 		raise SafeException("Local feed file '%s' does not exist" % local_feed_path)
 
-	iface = model.Interface(model.canonical_iface_uri(local_feed_path))
-	reader.update(iface, local_feed_path, local = True)
+	with open(local_feed_path, 'rb') as stream:
+		root = qdom.parse(stream)
+
+	feed = model.ZeroInstallFeed(root, local_path = local_feed_path)
 
 	if options.release:
 		import release
-		release.do_release(iface, options)
+		release.do_release(feed, options)
 	else:
 		import setup
-		setup.init_releases_directory(iface)
+		setup.init_releases_directory(feed)
 except KeyboardInterrupt, ex:
 	print >>sys.stderr, "Interrupted"
 	sys.exit(1)

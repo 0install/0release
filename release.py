@@ -127,28 +127,28 @@ def upload_archives(options, status, uploads):
 		if 'N' in new_stat and cmd:
 			raw_input('Press Return to try again.')
 
-def do_release(local_iface, options):
+def do_release(local_feed, options):
 	assert options.master_feed_file
 	options.master_feed_file = os.path.abspath(options.master_feed_file)
 
 	if not options.archive_dir_public_url:
 		raise SafeException("Downloads directory not set. Edit the 'make-release' script and try again.")
 
-	if not local_iface.feed_for:
-		raise SafeException("Feed %s missing a <feed-for> element" % local_iface.uri)
+	if not local_feed.feed_for:
+		raise SafeException("Feed %s missing a <feed-for> element" % local_feed.local_path)
 
 	status = support.Status()
-	local_impl = support.get_singleton_impl(local_iface)
+	local_impl = support.get_singleton_impl(local_feed)
 
 	local_impl_dir = local_impl.id
 	assert local_impl_dir.startswith('/')
 	local_impl_dir = os.path.realpath(local_impl_dir)
 	assert os.path.isdir(local_impl_dir)
-	assert local_iface.uri.startswith(local_impl_dir + '/')
+	assert local_feed.local_path.startswith(local_impl_dir + '/')
 
 	# From the impl directory to the feed
 	# NOT relative to the archive root (in general)
-	local_iface_rel_path = local_iface.uri[len(local_impl_dir) + 1:]
+	local_iface_rel_path = local_feed.local_path[len(local_impl_dir) + 1:]
 	assert not local_iface_rel_path.startswith('/')
 	assert os.path.isfile(os.path.join(local_impl_dir, local_iface_rel_path))
 
@@ -157,7 +157,7 @@ def do_release(local_iface, options):
 		phase_actions[phase] = []	# List of <release:action> elements
 
 	add_toplevel_dir = None
-	release_management = local_iface.get_metadata(XMLNS_RELEASE, 'management')
+	release_management = local_feed.get_metadata(XMLNS_RELEASE, 'management')
 	if len(release_management) == 1:
 		info("Found <release:management> element.")
 		release_management = release_management[0]
@@ -165,21 +165,21 @@ def do_release(local_iface, options):
 			if x.uri == XMLNS_RELEASE and x.name == 'action':
 				phase = x.getAttribute('phase')
 				if phase not in valid_phases:
-					raise SafeException("Invalid action phase '%s' in local feed %s. Valid actions are:\n%s" % (phase, local_iface.uri, '\n'.join(valid_phases)))
+					raise SafeException("Invalid action phase '%s' in local feed %s. Valid actions are:\n%s" % (phase, local_feed.local_path, '\n'.join(valid_phases)))
 				phase_actions[phase].append(x.content)
 			elif x.uri == XMLNS_RELEASE and x.name == 'add-toplevel-directory':
-				add_toplevel_dir = local_iface.get_name()
+				add_toplevel_dir = local_feed.get_name()
 			else:
 				warn("Unknown <release:management> element: %s", x)
 	elif len(release_management) > 1:
-		raise SafeException("Multiple <release:management> sections in %s!" % local_iface)
+		raise SafeException("Multiple <release:management> sections in %s!" % local_feed)
 	else:
 		info("No <release:management> element found in local feed.")
 
-	scm = get_scm(local_iface, options)
+	scm = get_scm(local_feed, options)
 
 	# Path relative to the archive / SCM root
-	local_iface_rel_root_path = local_iface.uri[len(scm.root_dir) + 1:]
+	local_iface_rel_root_path = local_feed.local_path[len(scm.root_dir) + 1:]
 
 	def run_hooks(phase, cwd, env):
 		info("Running hooks for phase '%s'" % phase)
@@ -205,7 +205,7 @@ def do_release(local_iface, options):
 		run_hooks('commit-release', cwd = working_copy, env = {'RELEASE_VERSION': release_version})
 
 		print "Releasing version", release_version
-		support.publish(local_iface.uri, set_released = 'today', set_version = release_version)
+		support.publish(local_feed.local_path, set_released = 'today', set_version = release_version)
 
 		support.backup_if_exists(release_version)
 		os.mkdir(release_version)
@@ -218,7 +218,7 @@ def do_release(local_iface, options):
 	
 	def set_to_snapshot(snapshot_version):
 		assert snapshot_version.endswith('-post')
-		support.publish(local_iface.uri, set_released = '', set_version = snapshot_version)
+		support.publish(local_feed.local_path, set_released = '', set_version = snapshot_version)
 		scm.commit('Start development series %s' % snapshot_version, branch = TMP_BRANCH_NAME, parent = TMP_BRANCH_NAME)
 		status.new_snapshot_version = scm.get_head_revision()
 		status.save()
@@ -228,7 +228,7 @@ def do_release(local_iface, options):
 			raise SafeException("Master feed file not set! Check your configuration")
 
 		scm.ensure_committed()
-		scm.ensure_versioned(os.path.abspath(local_iface.uri))
+		scm.ensure_versioned(os.path.abspath(local_feed.local_path))
 		info("No uncommitted changes. Good.")
 		# Not needed for GIT. For SCMs where tagging is expensive (e.g. svn) this might be useful.
 		#run_unit_tests(local_impl)
@@ -345,8 +345,8 @@ def do_release(local_iface, options):
 
 		upload_archives(options, status, uploads)
 
-		assert len(local_iface.feed_for) == 1
-		feed_base = os.path.dirname(local_iface.feed_for.keys()[0])
+		assert len(local_feed.feed_for) == 1
+		feed_base = os.path.dirname(list(local_feed.feed_for)[0])
 		feed_files = [options.master_feed_file]
 		print "Upload %s into %s" % (', '.join(feed_files), feed_base)
 		cmd = options.master_feed_upload_command.strip()
@@ -367,9 +367,9 @@ def do_release(local_iface, options):
 	if status.head_before_release:
 		head = scm.get_head_revision() 
 		if status.release_version:
-			print "RESUMING release of %s %s" % (local_iface.get_name(), status.release_version)
+			print "RESUMING release of %s %s" % (local_feed.get_name(), status.release_version)
 		elif head == status.head_before_release:
-			print "Restarting release of %s (HEAD revision has not changed)" % local_iface.get_name()
+			print "Restarting release of %s (HEAD revision has not changed)" % local_feed.get_name()
 		else:
 			raise SafeException("Something went wrong with the last run:\n" +
 					    "HEAD revision for last run was " + status.head_before_release + "\n" +
@@ -377,7 +377,7 @@ def do_release(local_iface, options):
 					    "You should revert your working copy to the previous head and try again.\n" +
 					    "If you're sure you want to release from the current head, delete '" + support.release_status_file + "'")
 	else:
-		print "Releasing", local_iface.get_name()
+		print "Releasing", local_feed.get_name()
 
 	ensure_ready_to_release()
 
@@ -407,7 +407,7 @@ def do_release(local_iface, options):
 	# May be needed by the upload command
 	os.environ['RELEASE_VERSION'] = status.release_version
 
-	archive_name = support.make_archive_name(local_iface.get_name(), status.release_version)
+	archive_name = support.make_archive_name(local_feed.get_name(), status.release_version)
 	archive_file = archive_name + '.tar.bz2'
 
 	export_prefix = archive_name
@@ -518,7 +518,7 @@ def do_release(local_iface, options):
 		while True:
 			choice = support.get_choice(['Publish', 'Fail'] + maybe_diff)
 			if choice == 'Diff':
-				previous_archive_name = support.make_archive_name(local_iface.get_name(), previous_release)
+				previous_archive_name = support.make_archive_name(local_feed.get_name(), previous_release)
 				previous_archive_file = '../%s/%s.tar.bz2' % (previous_release, previous_archive_name)
 
 				# For archives created by older versions of 0release
