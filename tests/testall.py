@@ -2,6 +2,7 @@
 import unittest, os, sys
 try:
 	import coverage
+	coverage.use_cache(False)
 	coverage.erase()
 	coverage.start()
 except ImportError:
