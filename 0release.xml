@@ -27,7 +27,7 @@
       <runner interface="http://repo.roscidus.com/python/python">
 	<version before="3"/>
       </runner>
-      <executable-in-path name='0release'/>
+      <executable-in-path name="0release"/>
     </command>
     <requires interface="http://0install.net/2006/interfaces/0publish">
       <version not-before="0.17"/>
@@ -41,6 +41,6 @@
       <version not-before="0.4-post"/>
       <environment insert="0test" mode="replace" name="0TEST"/>
     </requires>
-    <implementation id="." version="0.13-post"/>
+    <implementation id="." released="2012-09-15" version="0.14"/>
   </group>
 </interface>
