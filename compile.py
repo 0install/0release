@@ -1,10 +1,9 @@
 # Copyright (C) 2009, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 
-import tempfile, shutil, subprocess, os
+import tempfile, shutil, os
 import ConfigParser
 from logging import info
-from zeroinstall.injector import model
 from zeroinstall.support import basedir
 
 import support

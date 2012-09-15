@@ -1,9 +1,8 @@
 # Copyright (C) 2007, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 
-import os, sys
+import os
 from zeroinstall import SafeException
-from zeroinstall.injector import reader, model
 
 release_uri = 'http://0install.net/2007/interfaces/0release.xml'
 

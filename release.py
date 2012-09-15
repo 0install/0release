@@ -1,9 +1,9 @@
 # Copyright (C) 2009, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 
-import os, sys, subprocess, shutil, tempfile
+import os, subprocess, shutil
 from zeroinstall import SafeException
-from zeroinstall.injector import reader, model, qdom
+from zeroinstall.injector import model
 from zeroinstall.support import ro_rmtree
 from logging import info, warn
 
@@ -268,7 +268,7 @@ def do_release(local_feed, options):
 		finally:
 			changelog.close()
 	
-	def fail_candidate(archive_file):
+	def fail_candidate():
 		cwd = os.getcwd()
 		assert cwd.endswith(status.release_version)
 		support.backup_if_exists(cwd)
@@ -276,7 +276,7 @@ def do_release(local_feed, options):
 		os.unlink(support.release_status_file)
 		print "Restored to state before starting release. Make your fixes and try again..."
 
-	def accept_and_publish(archive_file, archive_name, src_feed_name):
+	def accept_and_publish(archive_file, src_feed_name):
 		assert options.master_feed_file
 
 		if not options.archive_dir_public_url:
@@ -428,7 +428,7 @@ def do_release(local_feed, options):
 				support.check_call(['tar', 'cjf', archive_file, archive_name])
 			except SafeException:
 				scm.reset_hard(scm.get_current_branch())
-				fail_candidate(archive_file)
+				fail_candidate()
 				raise
 
 		status.created_archive = 'true'
@@ -474,14 +474,13 @@ def do_release(local_feed, options):
 			status.save()
 	except SafeException:
 		print "(leaving extracted directory for examination)"
-		fail_candidate(archive_file)
+		fail_candidate()
 		raise
 	# Unpack it again in case the unit-tests changed anything
 	ro_rmtree(archive_name)
 	support.unpack_tarball(archive_file)
 
 	# Generate feed for source
-	stream = open(extracted_feed_path)
 	src_feed_name = '%s.xml' % archive_name
 	create_feed(src_feed_name, extracted_feed_path, archive_file, archive_name, main)
 	print "Wrote source feed as %s" % src_feed_name
@@ -538,7 +537,7 @@ def do_release(local_feed, options):
 	shutil.rmtree(archive_name)
 
 	if choice == 'Publish':
-		accept_and_publish(archive_file, archive_name, src_feed_name)
+		accept_and_publish(archive_file, src_feed_name)
 	else:
 		assert choice == 'Fail'
-		fail_candidate(archive_file)
+		fail_candidate()

@@ -11,7 +11,7 @@ if zi is not None:
 	# (and we want our setup.py, not 0install's)
 	sys.path.insert(1, zi)
 from zeroinstall import SafeException
-from zeroinstall.injector import reader, model, qdom
+from zeroinstall.injector import qdom
 
 version = '0.13'
 

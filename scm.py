@@ -150,7 +150,7 @@ class GIT(SCM):
 		child.wait()
 		if child.returncode in [0, 1]:
 			return
-		warn("git grep returned exit code %d", proc.returncode)
+		warn("git grep returned exit code %d", child.returncode)
 
 	def has_submodules(self):
 		return os.path.isfile(os.path.join(self.root_dir, '.gitmodules'))

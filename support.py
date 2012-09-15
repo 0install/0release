@@ -58,8 +58,6 @@ def publish(feed_path, **kwargs):
 	check_call(args)
 
 def get_singleton_impl(feed):
-	if isinstance(feed, model.Interface):
-		feed = feed._main_feed
 	impls = feed.implementations
 	if len(impls) != 1:
 		raise SafeException("Local feed '%s' contains %d versions! I need exactly one!" % (feed.url, len(impls)))
