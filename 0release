@@ -13,7 +13,7 @@ if zi is not None:
 from zeroinstall import SafeException
 from zeroinstall.injector import qdom
 
-version = '0.14'
+version = '0.14.1'
 
 parser = OptionParser(usage = """usage: %prog [options] LOCAL-FEED
 
