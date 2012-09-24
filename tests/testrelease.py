@@ -1,9 +1,11 @@
 #!/usr/bin/env python
 # Copyright (C) 2007, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
-import sys, os, shutil, tempfile, subprocess
+import sys, os, shutil, tempfile, subprocess, imp
 import unittest
-from zeroinstall.injector import model, qdom
+from zeroinstall.injector import model, qdom, writer
+from zeroinstall.injector.config import load_config
+from zeroinstall.support import basedir, ro_rmtree
 
 sys.path.insert(0, '..')
 
@@ -38,7 +40,7 @@ def call_with_output_suppressed(cmd, stdin, expect_failure = False, **kwargs):
 
 def make_releases_dir(src_feed = '../hello/HelloWorld.xml', auto_upload = False):
 	os.chdir('releases')
-	call_with_output_suppressed(['0launch', release_feed, src_feed], None)
+	call_with_output_suppressed(['0launch', '-o', release_feed, src_feed], None)
 	assert os.path.isfile('make-release')
 
 	lines = file('make-release').readlines()
@@ -75,11 +77,22 @@ class TestRelease(unittest.TestCase):
 		s = open(os.path.join(injector_config, 'global'), 'w')
 		s.write(test_config)
 		s.close()
+
+		if 'ZEROINSTALL_PORTABLE_BASE' in os.environ:
+			del os.environ['ZEROINSTALL_PORTABLE_BASE']
 		os.environ['XDG_CONFIG_HOME'] = config_dir
+		imp.reload(basedir)
+		assert basedir.xdg_config_home == config_dir
+
+		# Register the local 0release as a feed so we test against that
+		self.config = load_config()
+		iface = self.config.iface_cache.get_interface("http://0install.net/2007/interfaces/0release.xml")
+		iface.extra_feeds = [model.Feed(release_feed, arch = None, user_override = True)]
+		writer.save_interface(iface)
 	
 	def tearDown(self):
 		os.chdir(mydir)
-		shutil.rmtree(self.tmp)
+		ro_rmtree(self.tmp)
 
 	def testSimple(self):
 		support.check_call(['tar', 'xzf', test_repo])

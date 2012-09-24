@@ -125,8 +125,8 @@ def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
 		finally:
 			stream.close()
 
-		support.check_call(['0launch', COMPILE, '--not-before=0.30', 'build'], cwd = tmpdir)
-		support.check_call(['0launch', COMPILE, '--not-before=0.30', 'publish', '--target-feed', target_feed], cwd = tmpdir)
+		support.check_call(['0launch', '--not-before=0.30', COMPILE, 'build'], cwd = tmpdir)
+		support.check_call(['0launch', '--not-before=0.30', COMPILE, 'publish', '--target-feed', target_feed], cwd = tmpdir)
 
 		# TODO: run unit-tests
 
