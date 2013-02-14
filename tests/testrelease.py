@@ -40,7 +40,7 @@ def call_with_output_suppressed(cmd, stdin, expect_failure = False, **kwargs):
 
 def make_releases_dir(src_feed = '../hello/HelloWorld.xml', auto_upload = False):
 	os.chdir('releases')
-	call_with_output_suppressed(['0launch', '-o', release_feed, src_feed], None)
+	call_with_output_suppressed(['0release', src_feed], None)
 	assert os.path.isfile('make-release')
 
 	lines = file('make-release').readlines()

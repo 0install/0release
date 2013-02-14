@@ -31,7 +31,8 @@
     </command>
     <requires interface="http://0install.net/2006/interfaces/0publish">
       <version not-before="0.17"/>
-      <environment insert="0publish" mode="replace" name="0PUBLISH"/>
+      <environment insert="0publish" mode="replace" name="0PUBLISH" if-0install-version='..!1.13'/>
+      <executable-in-var name="0PUBLISH"/>
     </requires>
     <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml">
       <version not-before="1.6"/>
@@ -39,7 +40,8 @@
     </requires>
     <requires interface="http://0install.net/2008/interfaces/0test.xml">
       <version not-before="0.4-post"/>
-      <environment insert="0test" mode="replace" name="0TEST"/>
+      <environment insert="0test" mode="replace" name="0TEST" if-0install-version='..!1.13'/>
+      <executable-in-var name="0TEST"/>
     </requires>
     <implementation id="." version="0.14.1-post"/>
   </group>
