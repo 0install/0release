@@ -43,6 +43,6 @@
       <environment if-0install-version="..!1.13" insert="0test" mode="replace" name="0TEST"/>
       <executable-in-var name="0TEST"/>
     </requires>
-    <implementation id="." released="2013-02-15" version="0.14.2"/>
+    <implementation id="." version="0.14.2-post"/>
   </group>
 </interface>
