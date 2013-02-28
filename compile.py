@@ -1,14 +1,12 @@
 # Copyright (C) 2009, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 
-import tempfile, shutil, os
+import tempfile, shutil, os, sys
 import ConfigParser
 from logging import info
 from zeroinstall.support import basedir
 
 import support
-
-COMPILE = 'http://0install.net/2006/interfaces/0compile.xml'
 
 class Compiler:
 	def __init__(self, options, src_feed_name):
@@ -24,7 +22,8 @@ class Compiler:
 		self.config.set('global', 'builders', 'host')
 
 		self.config.add_section('builder-host')
-		self.config.set('builder-host', 'build', '0launch --not-before 0.10 http://0install.net/2007/interfaces/0release.xml --build-slave "$@"')
+		#self.config.set('builder-host', 'build', '0launch --not-before 0.10 http://0install.net/2007/interfaces/0release.xml --build-slave "$@"')
+		self.config.set('builder-host', 'build', '0launch --command=build-slave http://0install.net/2007/interfaces/0release.xml "$@"')
 
 		self.src_impl = support.get_singleton_impl(self.src_feed)
 		if self.src_impl.arch and self.src_impl.arch.endswith('-src'):
@@ -95,6 +94,14 @@ class Compiler:
 
 # This is the actual build process, running on the build machine
 def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
+	try:
+		COMPILE = [os.environ['0COMPILE']]
+	except KeyError:
+		print >>sys.stdout, ("\n\n*****\n"
+			"Please update your ~/.config/0install.net/0release/builders.conf file to use --command=build-slave."
+			"\n*****\n\n")
+		COMPILE = ['0launch', '--not-before=0.30', 'http://0install.net/2006/interfaces/0compile.xml']
+
 	feed = support.load_feed(src_feed)
 
 	src_feed = os.path.abspath(src_feed)
@@ -125,8 +132,8 @@ def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
 		finally:
 			stream.close()
 
-		support.check_call(['0launch', '--not-before=0.30', COMPILE, 'build'], cwd = tmpdir)
-		support.check_call(['0launch', '--not-before=0.30', COMPILE, 'publish', '--target-feed', target_feed], cwd = tmpdir)
+		support.check_call(COMPILE + ['build'], cwd = tmpdir)
+		support.check_call(COMPILE + ['publish', '--target-feed', target_feed], cwd = tmpdir)
 
 		# TODO: run unit-tests
 

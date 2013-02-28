@@ -8,6 +8,7 @@ from zeroinstall.injector.config import load_config
 from zeroinstall.support import basedir, ro_rmtree
 
 sys.path.insert(0, '..')
+os.environ['http_proxy'] = 'localhost:1111'	# Prevent accidental network access
 
 import support
 

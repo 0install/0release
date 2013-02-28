@@ -19,19 +19,26 @@
 
   <group license="OSI Approved :: GNU Lesser General Public License (LGPL)" main="0release">
     <command name="run" path="0release">
-      <runner interface="http://repo.roscidus.com/python/python">
-	<version before="3"/>
-      </runner>
+      <runner interface="http://repo.roscidus.com/python/python"/>
+    </command>
+    <command name="build-slave" path="0release">
+      <runner interface="http://repo.roscidus.com/python/python"/>
+      <arg>--build-slave</arg>
+      <requires interface='http://0install.net/2006/interfaces/0compile.xml'>
+	<version not-before='0.30'/>
+	<executable-in-var name='0COMPILE'/>
+      </requires>
     </command>
     <command name="test" path="tests/testall.py">
-      <runner interface="http://repo.roscidus.com/python/python">
-	<version before="3"/>
-      </runner>
+      <runner interface="http://repo.roscidus.com/python/python"/>
       <executable-in-path name="0release"/>
       <requires interface="http://repo.roscidus.com/devel/make">
 	<executable-in-path name="make"/>
       </requires>
     </command>
+    <requires interface="http://repo.roscidus.com/python/python">
+      <version before="3"/>
+    </requires>
     <requires interface="http://0install.net/2006/interfaces/0publish">
       <version not-before="0.17"/>
       <environment if-0install-version="..!1.13" insert="0publish" mode="replace" name="0PUBLISH"/>
