@@ -35,6 +35,9 @@
       <requires interface="http://repo.roscidus.com/devel/make">
 	<executable-in-path name="make"/>
       </requires>
+      <requires interface='http://0install.net/2006/interfaces/0compile.xml'>
+        <version not-before='0.30'/>
+      </requires>
     </command>
     <requires interface="http://repo.roscidus.com/python/python">
       <version before="3"/>
