@@ -37,6 +37,7 @@
       </requires>
       <requires interface='http://0install.net/2006/interfaces/0compile.xml'>
         <version not-before='0.30'/>
+	<environment insert="0compile.xml" mode="replace" name="0COMPILE_FEED"/>
       </requires>
     </command>
     <requires interface="http://repo.roscidus.com/python/python">

@@ -85,12 +85,17 @@ class TestRelease(unittest.TestCase):
 		imp.reload(basedir)
 		assert basedir.xdg_config_home == config_dir
 
-		# Register the local 0release as a feed so we test against that
+		# Register the local 0release/0compile feeds so we can test against those
 		self.config = load_config()
+
 		iface = self.config.iface_cache.get_interface("http://0install.net/2007/interfaces/0release.xml")
 		iface.extra_feeds = [model.Feed(release_feed, arch = None, user_override = True)]
 		writer.save_interface(iface)
 	
+		iface = self.config.iface_cache.get_interface("http://0install.net/2006/interfaces/0compile.xml")
+		iface.extra_feeds = [model.Feed(os.environ["0COMPILE_FEED"], arch = None, user_override = True)]
+		writer.save_interface(iface)
+
 	def tearDown(self):
 		os.chdir(mydir)
 		ro_rmtree(self.tmp)
