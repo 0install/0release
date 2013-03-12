@@ -29,6 +29,7 @@ parser.add_option("", "--master-feed-file", help="local file to extend with new 
 parser.add_option("", "--archive-upload-command", help="shell command to upload releases", metavar='COMMAND')
 parser.add_option("", "--master-feed-upload-command", help="shell command to upload feed", metavar='COMMAND')
 parser.add_option("", "--public-scm-repository", help="the name of the repository to push to", metavar='REPOS')
+parser.add_option("", "--release-version", help="explicitly set the version of this release", metavar='VERSION')
 parser.add_option("-V", "--version", help="display version information", action='store_true')
 
 (options, args) = parser.parse_args()

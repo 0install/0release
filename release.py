@@ -191,10 +191,12 @@ def do_release(local_feed, options):
 
 	def set_to_release():
 		print "Snapshot version is " + local_impl.get_version()
-		suggested = support.suggest_release_version(local_impl.get_version())
-		release_version = raw_input("Version number for new release [%s]: " % suggested)
-		if not release_version:
-			release_version = suggested
+		release_version = options.release_version
+		if release_version is None:
+			suggested = support.suggest_release_version(local_impl.get_version())
+			release_version = raw_input("Version number for new release [%s]: " % suggested)
+			if not release_version:
+				release_version = suggested
 
 		scm.ensure_no_tag(release_version)
 
@@ -364,6 +366,8 @@ def do_release(local_feed, options):
 		head = scm.get_head_revision() 
 		if status.release_version:
 			print "RESUMING release of %s %s" % (local_feed.get_name(), status.release_version)
+			if options.release_version and options.release_version != status.release_version:
+				raise SafeException("Can't start release of version %s; we are currently releasing %s.\nDelete the release-status file to abort the previous release." % (options.release_version, status.release_version))
 		elif head == status.head_before_release:
 			print "Restarting release of %s (HEAD revision has not changed)" % local_feed.get_name()
 		else:
