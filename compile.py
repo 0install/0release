@@ -23,7 +23,7 @@ class Compiler:
 
 		self.config.add_section('builder-host')
 		#self.config.set('builder-host', 'build', '0launch --not-before 0.10 http://0install.net/2007/interfaces/0release.xml --build-slave "$@"')
-		self.config.set('builder-host', 'build', '0launch --command=build-slave http://0install.net/2007/interfaces/0release.xml "$@"')
+		self.config.set('builder-host', 'build', '')
 
 		self.src_impl = support.get_singleton_impl(self.src_feed)
 		if self.src_impl.arch and self.src_impl.arch.endswith('-src'):
@@ -69,7 +69,12 @@ class Compiler:
 
 				if start: support.show_and_run(start, [])
 				try:
-					support.show_and_run(command, [os.path.basename(self.src_feed_name), archive_file, self.archive_dir_public_url, binary_feed + '.new'])
+					args = [os.path.basename(self.src_feed_name), archive_file, self.archive_dir_public_url, binary_feed + '.new']
+					if not command:
+						assert target == 'host', 'Missing build command'
+						support.check_call([sys.executable, sys.argv[0], '--build-slave'] + args)
+					else:
+						support.show_and_run(command, args)
 				finally:
 					if stop: support.show_and_run(stop, [])
 
@@ -97,9 +102,7 @@ def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
 	try:
 		COMPILE = [os.environ['0COMPILE']]
 	except KeyError:
-		print >>sys.stdout, ("\n\n*****\n"
-			"Please update your ~/.config/0install.net/0release/builders.conf file to use --command=build-slave."
-			"\n*****\n\n")
+		# (build slave has an old 0release)
 		COMPILE = ['0launch', '--not-before=0.30', 'http://0install.net/2006/interfaces/0compile.xml']
 
 	feed = support.load_feed(src_feed)
