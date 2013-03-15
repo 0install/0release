@@ -501,7 +501,7 @@ def do_release(local_feed, options):
 
 		print "\nPlease check candidate and select an action:"
 		print "P) Publish candidate (accept)"
-		print "F) Fail candidate (untag)"
+		print "F) Fail candidate (delete release-status file)"
 		if previous_release:
 			print "D) Diff against release archive for %s" % previous_release
 			maybe_diff = ['Diff']
