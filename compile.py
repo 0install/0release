@@ -9,11 +9,10 @@ from zeroinstall.support import basedir
 import support
 
 class Compiler:
-	def __init__(self, options, src_feed_name):
+	def __init__(self, options, src_feed_name, release_version):
 		self.src_feed_name = src_feed_name
 		self.src_feed = support.load_feed(src_feed_name)
-		self.archive_dir_public_url = options.archive_dir_public_url
-		assert options.archive_dir_public_url
+		self.archive_dir_public_url = support.get_archive_url(options, release_version, '')
 
 		self.config = ConfigParser.RawConfigParser()
 

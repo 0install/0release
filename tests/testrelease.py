@@ -45,7 +45,7 @@ def make_releases_dir(src_feed = '../hello/HelloWorld.xml', auto_upload = False)
 	assert os.path.isfile('make-release')
 
 	lines = file('make-release').readlines()
-	lines[lines.index('ARCHIVE_DIR_PUBLIC_URL=\n')] = 'ARCHIVE_DIR_PUBLIC_URL=http://TESTING/releases\n'
+	lines[lines.index('ARCHIVE_DIR_PUBLIC_URL=\n')] = 'ARCHIVE_DIR_PUBLIC_URL=http://TESTING/releases/\\$RELEASE_VERSION\n'
 
 	# Force us to test against this version of 0release
 	for i, line in enumerate(lines):
@@ -142,6 +142,8 @@ class TestRelease(unittest.TestCase):
 		assert os.path.basename(src_impl.download_sources[0].url) in archives
 
 		host_download = host_impl.download_sources[0]
+		self.assertEqual('http://TESTING/releases/1.1/helloworld-in-c-linux-x86_64-1.1.tar.bz2',
+				host_download.url)
 		host_archive = os.path.basename(host_download.url)
 		assert host_archive in archives
 		support.check_call(['tar', 'xjf', os.path.join('archives', host_archive)])

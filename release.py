@@ -27,12 +27,6 @@ def run_unit_tests(local_feed):
 	if exitstatus:
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
 
-def get_archive_url(options, status, archive):
-	archive_dir_public_url = options.archive_dir_public_url.replace('$RELEASE_VERSION', status.release_version)
-	if not archive_dir_public_url.endswith('/'):
-		archive_dir_public_url += '/'
-	return archive_dir_public_url + archive
-
 def upload_archives(options, status, uploads):
 	# For each binary or source archive in uploads, ensure it is available
 	# from options.archive_dir_public_url
@@ -42,7 +36,7 @@ def upload_archives(options, status, uploads):
 	# from an incoming queue before we can test them.
 
 	def url(archive):
-		return get_archive_url(options, status, archive)
+		return support.get_archive_url(options, status.release_version, archive)
 
 	# Check that url exists and has the given size
 	def is_uploaded(url, size):
@@ -242,7 +236,7 @@ def do_release(local_feed, options):
 
 		support.publish(target_feed,
 			set_main = main,
-			archive_url = get_archive_url(options, status, os.path.basename(archive_file)),
+			archive_url = support.get_archive_url(options, status.release_version, os.path.basename(archive_file)),
 			archive_file = archive_file,
 			archive_extract = archive_name)
 	
@@ -490,7 +484,7 @@ def do_release(local_feed, options):
 	print "Wrote source feed as %s" % src_feed_name
 
 	# If it's a source package, compile the binaries now...
-	compiler = compile.Compiler(options, os.path.abspath(src_feed_name))
+	compiler = compile.Compiler(options, os.path.abspath(src_feed_name), release_version = status.release_version)
 	compiler.build_binaries()
 
 	previous_release = get_previous_release(status.release_version)

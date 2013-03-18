@@ -230,3 +230,9 @@ def make_readonly_recursive(path):
 			full = os.path.join(root, d)
 			mode = os.stat(full).st_mode
 			os.chmod(full, mode & 0o555)
+
+def get_archive_url(options, release_version, archive):
+	archive_dir_public_url = options.archive_dir_public_url.replace('$RELEASE_VERSION', release_version)
+	if not archive_dir_public_url.endswith('/'):
+		archive_dir_public_url += '/'
+	return archive_dir_public_url + archive
