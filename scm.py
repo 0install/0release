@@ -83,6 +83,14 @@ class GIT(SCM):
 		info("Current branch is %s", current_branch)
 		return current_branch
 
+	def get_tagged_versions(self):
+		child = self._run(['tag', '-l', 'v*'], stdout = subprocess.PIPE)
+		stdout, unused = child.communicate()
+		status = child.wait()
+		if status:
+			raise SafeException("git tag failed with exit code %d" % status)
+		return [v[1:] for v in stdout.split('\n') if v]
+
 	def delete_branch(self, branch):
 		self._run_check(['branch', '-D', branch])
 

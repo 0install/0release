@@ -1,11 +1,14 @@
 # Copyright (C) 2009, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 
-import os, subprocess, shutil
+import os, subprocess, shutil, sys
 from zeroinstall import SafeException
 from zeroinstall.injector import model
 from zeroinstall.support import ro_rmtree
 from logging import info, warn
+
+sys.path.insert(0, os.environ['RELEASE_0REPO'])
+from repo import registry
 
 import support, compile
 from scm import get_scm
@@ -122,11 +125,8 @@ def upload_archives(options, status, uploads):
 			raw_input('Press Return to try again.')
 
 def do_release(local_feed, options):
-	assert options.master_feed_file
-	options.master_feed_file = os.path.abspath(options.master_feed_file)
-
-	if not options.archive_dir_public_url:
-		raise SafeException("Downloads directory not set. Edit the 'make-release' script and try again.")
+	if options.master_feed_file:
+		options.master_feed_file = os.path.abspath(options.master_feed_file)
 
 	if not local_feed.feed_for:
 		raise SafeException("Feed %s missing a <feed-for> element" % local_feed.local_path)
@@ -211,17 +211,17 @@ def do_release(local_feed, options):
 		status.release_version = release_version
 		status.head_at_release = scm.commit('Release %s' % release_version, branch = TMP_BRANCH_NAME, parent = 'HEAD')
 		status.save()
-	
+
 	def set_to_snapshot(snapshot_version):
 		assert snapshot_version.endswith('-post')
 		support.publish(local_feed.local_path, set_released = '', set_version = snapshot_version)
 		scm.commit('Start development series %s' % snapshot_version, branch = TMP_BRANCH_NAME, parent = TMP_BRANCH_NAME)
 		status.new_snapshot_version = scm.get_head_revision()
 		status.save()
-		
+
 	def ensure_ready_to_release():
-		if not options.master_feed_file:
-			raise SafeException("Master feed file not set! Check your configuration")
+		#if not options.master_feed_file:
+		#	raise SafeException("Master feed file not set! Check your configuration")
 
 		scm.ensure_committed()
 		scm.ensure_versioned(os.path.abspath(local_feed.local_path))
@@ -230,7 +230,7 @@ def do_release(local_feed, options):
 		#run_unit_tests(local_impl)
 
 		scm.grep('\(^\\|[^=]\)\<\\(TODO\\|XXX\\|FIXME\\)\>')
-	
+
 	def create_feed(target_feed, local_iface_path, archive_file, archive_name, main):
 		shutil.copyfile(local_iface_path, target_feed)
 
@@ -239,17 +239,17 @@ def do_release(local_feed, options):
 			archive_url = support.get_archive_url(options, status.release_version, os.path.basename(archive_file)),
 			archive_file = archive_file,
 			archive_extract = archive_name)
-	
+
 	def get_previous_release(this_version):
 		"""Return the highest numbered verison in the master feed before this_version.
 		@return: version, or None if there wasn't one"""
 		parsed_release_version = model.parse_version(this_version)
 
-		if os.path.exists(options.master_feed_file):
-			master = support.load_feed(options.master_feed_file)
-			versions = [impl.version for impl in master.implementations.values() if impl.version < parsed_release_version]
-			if versions:
-				return model.format_version(max(versions))
+		versions = [model.parse_version(version) for version in scm.get_tagged_versions()]
+		versions = [version for version in versions if version < parsed_release_version]
+
+		if versions:
+			return model.format_version(max(versions))
 		return None
 
 	def export_changelog(previous_release):
@@ -263,7 +263,7 @@ def do_release(local_feed, options):
 				print "Wrote changelog from %s to here as %s" % (previous_release or 'start', changelog.name)
 		finally:
 			changelog.close()
-	
+
 	def fail_candidate():
 		cwd = os.getcwd()
 		assert cwd.endswith(status.release_version)
@@ -272,28 +272,20 @@ def do_release(local_feed, options):
 		os.unlink(support.release_status_file)
 		print "Restored to state before starting release. Make your fixes and try again..."
 
-	def accept_and_publish(archive_file, src_feed_name):
+	def release_via_0repo(new_impls_feed):
+		import repo.cmd
+		support.make_archives_relative(new_impls_feed)
+		oldcwd = os.getcwd()
+		try:
+			repo.cmd.main(['0repo', 'add', '--', new_impls_feed])
+		finally:
+			os.chdir(oldcwd)
+
+	def release_without_0repo(archive_file, new_impls_feed):
 		assert options.master_feed_file
 
 		if not options.archive_dir_public_url:
 			raise SafeException("Archive directory public URL is not set! Edit configuration and try again.")
-
-		if status.tagged:
-			print "Already tagged in SCM. Not re-tagging."
-		else:
-			scm.ensure_committed()
-			head = scm.get_head_revision() 
-			if head != status.head_before_release:
-				raise SafeException("Changes committed since we started!\n" +
-						    "HEAD was " + status.head_before_release + "\n"
-						    "HEAD now " + head)
-
-			scm.tag(status.release_version, status.head_at_release)
-			scm.reset_hard(TMP_BRANCH_NAME)
-			scm.delete_branch(TMP_BRANCH_NAME)
-
-			status.tagged = 'true'
-			status.save()
 
 		if status.updated_master_feed:
 			print "Already added to master feed. Not changing."
@@ -315,15 +307,7 @@ def do_release(local_feed, options):
 						publish_opts['select_version'] = previous_release
 						publish_opts['set_stability'] = "stable"
 
-			# Merge the source and binary feeds together first, so
-			# that we update the master feed atomically and only
-			# have to sign it once.
-			shutil.copyfile(src_feed_name, 'merged.xml')
-			for b in compiler.get_binary_feeds():
-				support.publish('merged.xml', local = b)
-
-			support.publish(options.master_feed_file, local = 'merged.xml', xmlsign = True, key = options.key, **publish_opts)
-			os.unlink('merged.xml')
+			support.publish(options.master_feed_file, local = new_impls_feed, xmlsign = True, key = options.key, **publish_opts)
 
 			status.updated_master_feed = 'true'
 			status.save()
@@ -337,7 +321,6 @@ def do_release(local_feed, options):
 
 		upload_archives(options, status, uploads)
 
-		assert len(local_feed.feed_for) == 1
 		feed_base = os.path.dirname(list(local_feed.feed_for)[0])
 		feed_files = [options.master_feed_file]
 		print "Upload %s into %s" % (', '.join(feed_files), feed_base)
@@ -347,6 +330,44 @@ def do_release(local_feed, options):
 		else:
 			print "NOTE: No feed upload command set => you'll have to upload them yourself!"
 
+	def accept_and_publish(archive_file, src_feed_name):
+		if status.tagged:
+			print "Already tagged in SCM. Not re-tagging."
+		else:
+			scm.ensure_committed()
+			head = scm.get_head_revision()
+			if head != status.head_before_release:
+				raise SafeException("Changes committed since we started!\n" +
+						    "HEAD was " + status.head_before_release + "\n"
+						    "HEAD now " + head)
+
+			scm.tag(status.release_version, status.head_at_release)
+			scm.reset_hard(TMP_BRANCH_NAME)
+			scm.delete_branch(TMP_BRANCH_NAME)
+
+			status.tagged = 'true'
+			status.save()
+
+		assert len(local_feed.feed_for) == 1
+
+		# Merge the source and binary feeds together first, so
+		# that we update the master feed atomically and only
+		# have to sign it once.
+		new_impls_feed = 'merged.xml'
+		shutil.copyfile(src_feed_name, new_impls_feed)
+		for b in compiler.get_binary_feeds():
+			support.publish(new_impls_feed, local = b)
+
+		# TODO: support uploading to a sub-feed (requires support in 0repo too)
+		master_feed, = local_feed.feed_for
+		repository = registry.lookup(master_feed, missing_ok = True)
+		if repository:
+			release_via_0repo(new_impls_feed)
+		else:
+			release_without_0repo(archive_file, new_impls_feed)
+
+		os.unlink(new_impls_feed)
+
 		print "Push changes to public SCM repository..."
 		public_repos = options.public_scm_repository
 		if public_repos:
@@ -355,9 +376,9 @@ def do_release(local_feed, options):
 			print "NOTE: No public repository set => you'll have to push the tag and trunk yourself."
 
 		os.unlink(support.release_status_file)
-	
+
 	if status.head_before_release:
-		head = scm.get_head_revision() 
+		head = scm.get_head_revision()
 		if status.release_version:
 			print "RESUMING release of %s %s" % (local_feed.get_name(), status.release_version)
 			if options.release_version and options.release_version != status.release_version:
@@ -383,7 +404,7 @@ def do_release(local_feed, options):
 		if status.tagged:
 			print "Already tagged. Resuming the publishing process..."
 		elif status.new_snapshot_version:
-			head = scm.get_head_revision() 
+			head = scm.get_head_revision()
 			if head != status.head_before_release:
 				raise SafeException("There are more commits since we started!\n"
 						    "HEAD was " + status.head_before_release + "\n"

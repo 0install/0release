@@ -4,8 +4,10 @@
 import copy
 import os, subprocess, tarfile
 import urlparse, ftplib, httplib
+from xml.dom import minidom
+
 from zeroinstall import SafeException
-from zeroinstall.injector import model, qdom
+from zeroinstall.injector import model, qdom, namespaces
 from zeroinstall.support import ro_rmtree
 from logging import info
 
@@ -232,7 +234,21 @@ def make_readonly_recursive(path):
 			os.chmod(full, mode & 0o555)
 
 def get_archive_url(options, release_version, archive):
+	if not options.archive_dir_public_url:
+		return archive			# Not needed with 0repo
+
 	archive_dir_public_url = options.archive_dir_public_url.replace('$RELEASE_VERSION', release_version)
 	if not archive_dir_public_url.endswith('/'):
 		archive_dir_public_url += '/'
 	return archive_dir_public_url + archive
+
+def make_archives_relative(feed):
+	with open(feed, 'rb') as stream:
+		doc = minidom.parse(stream)
+	for elem in doc.getElementsByTagNameNS(namespaces.XMLNS_IFACE, 'archive') + doc.getElementsByTagNameNS(namespaces.XMLNS_IFACE, 'file'):
+		href = elem.getAttribute('href')
+		assert href, 'Missing href on %r' % elem
+		if '/' in href:
+			elem.setAttribute('href', href.rsplit('/', 1)[1])
+	with open(feed, 'wb') as stream:
+		doc.writexml(stream)

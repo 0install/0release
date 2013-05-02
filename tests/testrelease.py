@@ -2,7 +2,9 @@
 # Copyright (C) 2007, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 import sys, os, shutil, tempfile, subprocess, imp
+from StringIO import StringIO
 import unittest
+
 from zeroinstall.injector import model, qdom, writer
 from zeroinstall.injector.config import load_config
 from zeroinstall.support import basedir, ro_rmtree
@@ -11,6 +13,8 @@ sys.path.insert(0, '..')
 os.environ['http_proxy'] = 'localhost:1111'	# Prevent accidental network access
 
 import support
+import release		# (sets sys.path for 0repo)
+import repo.cmd
 
 mydir = os.path.realpath(os.path.dirname(__file__))
 release_feed = mydir + '/../0release.xml'
@@ -25,6 +29,26 @@ freshness = 0
 auto_approve_keys = True
 help_with_testing = True
 network_use = full
+"""
+
+CUSTOM_REPO_CONFIG = """
+REPOSITORY_BASE_URL = "http://0install.net/tests/"
+ARCHIVES_BASE_URL = "http://TESTING/releases"
+
+def upload_archives(archives):
+	for dir_rel_url, files in paths.group_by_target_url_dir(archives):
+		target_dir = join('..', 'releases', 'archives')	# hack: skip dir_rel_url
+		if not os.path.isdir(target_dir):
+			os.makedirs(target_dir)
+		subprocess.check_call(["cp"] + files + [target_dir])
+
+def check_new_impl(impl):
+	pass
+
+def get_archive_rel_url(archive_basename, impl):
+	return "{version}/{archive}".format(
+		version = impl.get_version(),
+		archive = archive_basename)
 """
 
 def call_with_output_suppressed(cmd, stdin, expect_failure = False, **kwargs):
@@ -129,7 +153,7 @@ class TestRelease(unittest.TestCase):
 
 		call_with_output_suppressed(['./make-release', '-k', 'Testing', '--builders=host'], '\nP\n\n')
 
-		feed = model.ZeroInstallFeed(qdom.parse(file('HelloWorld-in-C.xml')))
+		feed = self.get_public_feed('HelloWorld-in-C.xml', 'c-prog.xml')
 
 		assert len(feed.implementations) == 2
 		src_impl, = [x for x in feed.implementations.values() if x.arch == '*-src']
@@ -139,7 +163,7 @@ class TestRelease(unittest.TestCase):
 		assert host_impl.main == 'hello'
 
 		archives = os.listdir('archives')
-		assert os.path.basename(src_impl.download_sources[0].url) in archives
+		assert os.path.basename(src_impl.download_sources[0].url) in archives, src_impl.download_sources[0].url
 
 		host_download = host_impl.download_sources[0]
 		self.assertEqual('http://TESTING/releases/1.1/helloworld-in-c-linux-x86_64-1.1.tar.bz2',
@@ -151,8 +175,49 @@ class TestRelease(unittest.TestCase):
 		output, _ = c.communicate()
 
 		self.assertEquals("Hello from C! (version 1.1)\n", output)
+	
+	def get_public_feed(self, name, uri_basename):
+		with open(name, 'rb') as stream:
+			return model.ZeroInstallFeed(qdom.parse(stream))
 
+def run_repo(args):
+	oldcwd = os.getcwd()
 
-suite = unittest.makeSuite(TestRelease)
+	old_stdout = sys.stdout
+	sys.stdout = StringIO()
+	try:
+		sys.stdin = StringIO('\n')	# (simulate a press of Return if needed)
+		repo.cmd.main(['0repo'] + args)
+		return sys.stdout.getvalue()
+	finally:
+		os.chdir(oldcwd)
+		sys.stdout = old_stdout
+
+class TestRepoRelease(TestRelease):
+	def setUp(self):
+		TestRelease.setUp(self)
+
+		# Let GPG initialise (it's a bit verbose)
+		child = subprocess.Popen(['gpg', '-q', '--list-secret-keys'], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+		unused, unused = child.communicate()
+		child.wait()
+		
+		run_repo(['create', 'my-repo', 'Testing <testing@example.com>'])
+		os.chdir('my-repo')
+
+		if '0repo-config' in sys.modules:
+			del sys.modules['0repo-config']
+
+		with open('0repo-config.py', 'at') as stream:
+			stream.write(CUSTOM_REPO_CONFIG)
+		run_repo(['register'])
+		os.chdir('..')
+	
+	def get_public_feed(self, name, uri_basename):
+		with open(os.path.join(self.tmp, 'my-repo', 'public', uri_basename), 'rb') as stream:
+			return model.ZeroInstallFeed(qdom.parse(stream))
+	
+unittest.makeSuite(TestRelease)
+unittest.makeSuite(TestRepoRelease)
 if __name__ == '__main__':
 	unittest.main()
