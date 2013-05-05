@@ -36,6 +36,7 @@
 
     <requires interface='http://0install.net/tools/0repo.xml'>
       <environment name='RELEASE_0REPO' insert='.' mode='replace'/>
+      <version not-before='0.2'/>
     </requires>
 
     <requires interface="http://0install.net/2006/interfaces/0publish">

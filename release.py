@@ -2,13 +2,14 @@
 # See the README file for details, or visit http://0install.net.
 
 import os, subprocess, shutil, sys
+from xml.dom import minidom
 from zeroinstall import SafeException
 from zeroinstall.injector import model
 from zeroinstall.support import ro_rmtree
 from logging import info, warn
 
 sys.path.insert(0, os.environ['RELEASE_0REPO'])
-from repo import registry
+from repo import registry, merge
 
 import support, compile
 from scm import get_scm
@@ -353,10 +354,15 @@ def do_release(local_feed, options):
 		# Merge the source and binary feeds together first, so
 		# that we update the master feed atomically and only
 		# have to sign it once.
-		new_impls_feed = 'merged.xml'
-		shutil.copyfile(src_feed_name, new_impls_feed)
+		with open(src_feed_name, 'rb') as stream:
+			doc = minidom.parse(stream)
 		for b in compiler.get_binary_feeds():
-			support.publish(new_impls_feed, local = b)
+			with open(b, 'rb') as stream:
+				bin_doc = minidom.parse(b)
+			merge.merge(doc, bin_doc)
+		new_impls_feed = 'merged.xml'
+		with open(new_impls_feed, 'wb') as stream:
+			doc.writexml(stream)
 
 		# TODO: support uploading to a sub-feed (requires support in 0repo too)
 		master_feed, = local_feed.feed_for

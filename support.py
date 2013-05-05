@@ -252,3 +252,4 @@ def make_archives_relative(feed):
 			elem.setAttribute('href', href.rsplit('/', 1)[1])
 	with open(feed, 'wb') as stream:
 		doc.writexml(stream)
+		stream.write(b'\n')
