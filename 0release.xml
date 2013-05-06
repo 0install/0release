@@ -61,6 +61,6 @@
       <executable-in-var name="0COMPILE"/>
     </requires>
 
-    <implementation id="." released="2013-05-06" version="0.15"/>
+    <implementation id="." version="0.15-post"/>
   </group>
 </interface>
