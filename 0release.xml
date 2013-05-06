@@ -34,9 +34,9 @@
       <version before="3"/>
     </requires>
 
-    <requires interface='http://0install.net/tools/0repo.xml'>
-      <environment name='RELEASE_0REPO' insert='.' mode='replace'/>
-      <version not-before='0.2'/>
+    <requires interface="http://0install.net/tools/0repo.xml">
+      <environment insert="." mode="replace" name="RELEASE_0REPO"/>
+      <version not-before="0.2"/>
     </requires>
 
     <requires interface="http://0install.net/2006/interfaces/0publish">
@@ -56,11 +56,11 @@
       <executable-in-var name="0TEST"/>
     </requires>
 
-    <requires interface='http://0install.net/2006/interfaces/0compile.xml'>
-      <version not-before='0.30'/>
-      <executable-in-var name='0COMPILE'/>
+    <requires interface="http://0install.net/2006/interfaces/0compile.xml">
+      <version not-before="0.30"/>
+      <executable-in-var name="0COMPILE"/>
     </requires>
 
-    <implementation id="." version="0.14.2-post"/>
+    <implementation id="." released="2013-05-06" version="0.15"/>
   </group>
 </interface>
