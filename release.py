@@ -125,7 +125,20 @@ def upload_archives(options, status, uploads):
 		if 'N' in new_stat and cmd:
 			raw_input('Press Return to try again.')
 
+legacy_warning = """*** Note: the upload functions of 0release
+*** (--archive-dir-public-url, --master-feed-file, --archive-upload-command
+*** and --master-feed-upload-command) are being replaced by 0repo. They may
+*** go away in future. If 0repo is not suitable for your needs, please
+*** contact the mailing list to let us know.
+***
+***   http://www.0install.net/0repo.html
+***   http://www.0install.net/support.html#lists
+"""
+
 def do_release(local_feed, options):
+	if options.master_feed_file or options.archive_dir_public_url or options.archive_upload_command or options.master_feed_upload_command:
+		print(legacy_warning)
+
 	if options.master_feed_file:
 		options.master_feed_file = os.path.abspath(options.master_feed_file)
 
