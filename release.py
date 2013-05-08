@@ -26,7 +26,7 @@ def run_unit_tests(local_feed):
 	print "Running self-tests..."
 	exitstatus = subprocess.call([test_command, '--', local_feed])
 	if exitstatus == 2:
-		print "SKIPPED unit tests for %s (no 'self-test' attribute set)" % local_feed
+		print "SKIPPED unit tests for %s (no 'test' command)" % local_feed
 		return
 	if exitstatus:
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
