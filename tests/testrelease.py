@@ -49,6 +49,9 @@ def get_archive_rel_url(archive_basename, impl):
 	return "{version}/{archive}".format(
 		version = impl.get_version(),
 		archive = archive_basename)
+
+def check_uploaded_archive(archive, url):
+	pass
 """
 
 def call_with_output_suppressed(cmd, stdin, expect_failure = False, **kwargs):
