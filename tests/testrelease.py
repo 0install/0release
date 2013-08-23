@@ -126,6 +126,8 @@ class TestRelease(unittest.TestCase):
 
 		assert 'Prints "Hello World"' in file('0.1/changelog-0.1').read()
 		assert 'Prints "Hello World"' not in file('0.2/changelog-0.2').read()
+		new_v = file('../hello/hello.py').read()
+		assert '0.2-post' in new_v, new_v
 
 	def testUncommitted(self):
 		support.check_call(['tar', 'xzf', test_repo_actions])

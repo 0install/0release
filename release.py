@@ -1,7 +1,7 @@
 # Copyright (C) 2009, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 
-import os, subprocess, shutil, sys
+import os, subprocess, shutil, sys, re
 from xml.dom import minidom
 from zeroinstall import SafeException
 from zeroinstall.injector import model
@@ -135,6 +135,27 @@ legacy_warning = """*** Note: the upload functions of 0release
 ***   http://www.0install.net/support.html#lists
 """
 
+def do_version_substitutions(impl_dir, version_substitutions, new_version):
+	for (rel_path, subst) in version_substitutions:
+		assert not os.path.isabs(rel_path), rel_path
+		path = os.path.join(impl_dir, rel_path)
+		with open(path, 'rt') as stream:
+			data = stream.read()
+
+		match = subst.search(data)
+		if match:
+			orig = match.group(0)
+			span = match.span(1)
+			if match.lastindex != 1:
+				raise SafeException("Regex '%s' must have exactly one matching () group" % subst.pattern)
+			assert span[0] >= 0, "Version match group did not match (regexp=%s; match=%s)" % (subst.pattern, orig)
+			new_data = data[:span[0]] + new_version + data[span[1]:]
+		else:
+			raise SafeException("No matches for regex '%s' in '%s'" % (subst.pattern, path))
+
+		with open(path, 'wt') as stream:
+			stream.write(new_data)
+
 def do_release(local_feed, options):
 	if options.master_feed_file or options.archive_dir_public_url or options.archive_upload_command or options.master_feed_upload_command:
 		print(legacy_warning)
@@ -164,6 +185,8 @@ def do_release(local_feed, options):
 	for phase in valid_phases:
 		phase_actions[phase] = []	# List of <release:action> elements
 
+	version_substitutions = []
+
 	add_toplevel_dir = None
 	release_management = local_feed.get_metadata(XMLNS_RELEASE, 'management')
 	if len(release_management) == 1:
@@ -175,6 +198,8 @@ def do_release(local_feed, options):
 				if phase not in valid_phases:
 					raise SafeException("Invalid action phase '%s' in local feed %s. Valid actions are:\n%s" % (phase, local_feed.local_path, '\n'.join(valid_phases)))
 				phase_actions[phase].append(x.content)
+			elif x.uri == XMLNS_RELEASE and x.name == 'update-version':
+				version_substitutions.append((x.getAttribute('path'), re.compile(x.content, re.MULTILINE)))
 			elif x.uri == XMLNS_RELEASE and x.name == 'add-toplevel-directory':
 				add_toplevel_dir = local_feed.get_name()
 			else:
@@ -212,6 +237,7 @@ def do_release(local_feed, options):
 		status.save()
 
 		working_copy = local_impl.id
+		do_version_substitutions(local_impl_dir, version_substitutions, release_version)
 		run_hooks('commit-release', cwd = working_copy, env = {'RELEASE_VERSION': release_version})
 
 		print "Releasing version", release_version
@@ -229,6 +255,7 @@ def do_release(local_feed, options):
 	def set_to_snapshot(snapshot_version):
 		assert snapshot_version.endswith('-post')
 		support.publish(local_feed.local_path, set_released = '', set_version = snapshot_version)
+		do_version_substitutions(local_impl_dir, version_substitutions, snapshot_version)
 		scm.commit('Start development series %s' % snapshot_version, branch = TMP_BRANCH_NAME, parent = TMP_BRANCH_NAME)
 		status.new_snapshot_version = scm.get_head_revision()
 		status.save()
