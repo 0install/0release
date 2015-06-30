@@ -170,10 +170,10 @@ def do_release(local_feed, options):
 	local_impl = support.get_singleton_impl(local_feed)
 
 	local_impl_dir = local_impl.id
-	assert local_impl_dir.startswith('/')
+	assert os.path.isabs(local_impl_dir)
 	local_impl_dir = os.path.realpath(local_impl_dir)
 	assert os.path.isdir(local_impl_dir)
-	assert local_feed.local_path.startswith(local_impl_dir + '/')
+	assert local_feed.local_path.startswith(local_impl_dir + os.sep)
 
 	# From the impl directory to the feed
 	# NOT relative to the archive root (in general)
@@ -473,7 +473,7 @@ def do_release(local_feed, options):
 
 	export_prefix = archive_name
 	if add_toplevel_dir is not None:
-		export_prefix += '/' + add_toplevel_dir
+		export_prefix += os.sep + add_toplevel_dir
 
 	if status.created_archive and os.path.isfile(archive_file):
 		print "Archive already created"
@@ -578,11 +578,11 @@ def do_release(local_feed, options):
 			choice = support.get_choice(['Publish', 'Fail'] + maybe_diff)
 			if choice == 'Diff':
 				previous_archive_name = support.make_archive_name(local_feed.get_name(), previous_release)
-				previous_archive_file = '../%s/%s.tar.bz2' % (previous_release, previous_archive_name)
+				previous_archive_file = '..' + os.sep + previous_release + os.sep + previous_archive_name + '.tar.bz2'
 
 				# For archives created by older versions of 0release
 				if not os.path.isfile(previous_archive_file):
-					old_previous_archive_file = '../%s.tar.bz2' % previous_archive_name
+					old_previous_archive_file = '..' + os.sep + previous_archive_name + '.tar.bz2'
 					if os.path.isfile(old_previous_archive_file):
 						previous_archive_file = old_previous_archive_file
 
