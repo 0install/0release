@@ -4,7 +4,7 @@
 import tempfile, shutil, os, sys
 import ConfigParser
 from logging import info
-from zeroinstall.support import basedir
+from zeroinstall.support import basedir, portable_rename
 
 import support
 
@@ -85,7 +85,7 @@ class Compiler:
 				assert os.path.exists(bin_archive_file), "Compiled binary '%s' not found!" % os.path.abspath(bin_archive_file)
 				assert os.path.getsize(bin_archive_file) == bin_size, "Compiled binary '%s' has wrong size!" % os.path.abspath(bin_archive_file)
 
-				os.rename(binary_feed + '.new', binary_feed)
+				portable_rename(binary_feed + '.new', binary_feed)
 
 	def get_binary_feeds(self):
 		return ['binary-%s.xml' % target for target in self.targets]
@@ -119,7 +119,7 @@ def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
 		os.mkdir(depdir)
 
 		support.unpack_tarball(archive_file)
-		os.rename(impl.download_sources[0].extract, os.path.join(depdir, impl.id))
+		portable_rename(impl.download_sources[0].extract, os.path.join(depdir, impl.id))
 
 		config = ConfigParser.RawConfigParser()
 		config.add_section('compile')

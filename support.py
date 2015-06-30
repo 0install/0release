@@ -8,7 +8,7 @@ from xml.dom import minidom
 
 from zeroinstall import SafeException
 from zeroinstall.injector import model, qdom, namespaces
-from zeroinstall.support import ro_rmtree
+from zeroinstall.support import ro_rmtree, portable_rename
 from logging import info
 
 release_status_file = os.path.abspath('release-status')
@@ -75,7 +75,7 @@ def backup_if_exists(name):
 			ro_rmtree(backup)
 		else:
 			os.unlink(backup)
-	os.rename(name, backup)
+	portable_rename(name, backup)
 	print "(renamed old %s as %s; will delete on next run)" % (name, backup)
 
 def get_choice(options):
@@ -125,7 +125,7 @@ class Status(object):
 			lines = ["%s=%s\n" % (name, getattr(self, name)) for name in self.__slots__ if getattr(self, name)]
 			tmp.write(''.join(lines))
 			tmp.close()
-			os.rename(tmp_name, release_status_file)
+			portable_rename(tmp_name, release_status_file)
 			info("Wrote status to %s", release_status_file)
 		except:
 			os.unlink(tmp_name)
