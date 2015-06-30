@@ -516,7 +516,7 @@ def do_release(local_feed, options):
 	if extracted_impl.main:
 		# Find main executable, relative to the archive root
 		abs_main = os.path.join(os.path.dirname(extracted_feed_path), extracted_impl.id, extracted_impl.main)
-		main = support.relative_path(archive_name + '/', abs_main)
+		main = os.path.relpath(abs_main, archive_name + os.sep)
 		if main != extracted_impl.main:
 			print "(adjusting main: '%s' for the feed inside the archive, '%s' externally)" % (extracted_impl.main, main)
 			# XXX: this is going to fail if the feed uses the new <command> syntax

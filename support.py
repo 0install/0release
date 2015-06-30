@@ -215,17 +215,6 @@ def get_archive_basename(impl):
 	# "2" means "path" (for Python 2.4)
 	return os.path.basename(urlparse.urlparse(impl.download_sources[0].url)[2])
 
-def relative_path(ancestor, dst):
-	stem = os.path.abspath(os.path.dirname(ancestor))
-	dst = os.path.abspath(dst)
-	if stem != '/':
-		stem += '/'
-	assert dst.startswith(stem)
-	return dst[len(stem):]
-
-assert relative_path('/foo', '/foo') == 'foo'
-assert relative_path('/foo', '/foo/bar') == 'foo/bar'
-
 def make_readonly_recursive(path):
 	for root, dirs, files in os.walk(path):
 		for d in dirs + files:
