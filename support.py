@@ -54,7 +54,7 @@ def publish(feed_path, **kwargs):
 		if value is True:
 			args += ['--' + k.replace('_', '-')]
 		elif value is not None:
-			args += ['--' + k.replace('_', '-'), value]
+			args += ['--' + k.replace('_', '-') + "='" + value + "'"]
 	args.append(feed_path)
 	info("Executing %s", args)
 	check_call(args)
