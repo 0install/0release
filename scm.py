@@ -106,7 +106,7 @@ class GIT(SCM):
 						"git tag -d %s") % (version, tag))
 
 	def export(self, prefix, archive_file, revision):
-		child = self._run(['archive', '--format=tar', '--prefix=' + prefix + '/', revision], stdout = subprocess.PIPE)
+		child = self._run(['archive', '--format=tar', '--prefix=' + prefix + os.sep, revision], stdout = subprocess.PIPE)
 		subprocess.check_call(['bzip2', '-'], stdin = child.stdout, stdout = file(archive_file, 'w'))
 		status = child.wait()
 		if status:

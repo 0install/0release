@@ -2,13 +2,13 @@
 # See the README file for details, or visit http://0install.net.
 
 import copy
-import os, subprocess, tarfile
+import os, subprocess, tarfile, platform
 import urlparse, ftplib, httplib
 from xml.dom import minidom
 
 from zeroinstall import SafeException
 from zeroinstall.injector import model, qdom, namespaces
-from zeroinstall.support import ro_rmtree
+from zeroinstall.support import ro_rmtree, portable_rename
 from logging import info
 
 release_status_file = os.path.abspath('release-status')
@@ -54,7 +54,10 @@ def publish(feed_path, **kwargs):
 		if value is True:
 			args += ['--' + k.replace('_', '-')]
 		elif value is not None:
-			args += ['--' + k.replace('_', '-'), value]
+			if platform.system() == 'Windows':
+				args += ['--' + k.replace('_', '-') + "='" + value + "'"]
+			else:
+				args += ['--' + k.replace('_', '-'), value]
 	args.append(feed_path)
 	info("Executing %s", args)
 	check_call(args)
@@ -75,7 +78,7 @@ def backup_if_exists(name):
 			ro_rmtree(backup)
 		else:
 			os.unlink(backup)
-	os.rename(name, backup)
+	portable_rename(name, backup)
 	print "(renamed old %s as %s; will delete on next run)" % (name, backup)
 
 def get_choice(options):
@@ -125,7 +128,7 @@ class Status(object):
 			lines = ["%s=%s\n" % (name, getattr(self, name)) for name in self.__slots__ if getattr(self, name)]
 			tmp.write(''.join(lines))
 			tmp.close()
-			os.rename(tmp_name, release_status_file)
+			portable_rename(tmp_name, release_status_file)
 			info("Wrote status to %s", release_status_file)
 		except:
 			os.unlink(tmp_name)
@@ -214,17 +217,6 @@ def load_feed(path):
 def get_archive_basename(impl):
 	# "2" means "path" (for Python 2.4)
 	return os.path.basename(urlparse.urlparse(impl.download_sources[0].url)[2])
-
-def relative_path(ancestor, dst):
-	stem = os.path.abspath(os.path.dirname(ancestor))
-	dst = os.path.abspath(dst)
-	if stem != '/':
-		stem += '/'
-	assert dst.startswith(stem)
-	return dst[len(stem):]
-
-assert relative_path('/foo', '/foo') == 'foo'
-assert relative_path('/foo', '/foo/bar') == 'foo/bar'
 
 def make_readonly_recursive(path):
 	for root, dirs, files in os.walk(path):
