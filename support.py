@@ -2,7 +2,7 @@
 # See the README file for details, or visit http://0install.net.
 
 import copy
-import os, subprocess, tarfile
+import os, subprocess, tarfile, platform
 import urlparse, ftplib, httplib
 from xml.dom import minidom
 
@@ -54,7 +54,10 @@ def publish(feed_path, **kwargs):
 		if value is True:
 			args += ['--' + k.replace('_', '-')]
 		elif value is not None:
-			args += ['--' + k.replace('_', '-') + "='" + value + "'"]
+			if platform.system() == 'Windows':
+				args += ['--' + k.replace('_', '-') + "='" + value + "'"]
+			else:
+				args += ['--' + k.replace('_', '-'), value]
 	args.append(feed_path)
 	info("Executing %s", args)
 	check_call(args)
