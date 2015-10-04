@@ -57,7 +57,7 @@
     </requires>
 
     <requires interface="http://0install.net/2006/interfaces/0compile.xml">
-      <version not-before="0.30"/>
+      <version not-before="1.2"/>
       <executable-in-var name="0COMPILE"/>
     </requires>
 

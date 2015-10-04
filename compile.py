@@ -102,7 +102,7 @@ def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
 		COMPILE = [os.environ['0COMPILE']]
 	except KeyError:
 		# (build slave has an old 0release)
-		COMPILE = ['0launch', '--not-before=0.30', 'http://0install.net/2006/interfaces/0compile.xml']
+		COMPILE = ['0launch', '--not-before=1.2', 'http://0install.net/2006/interfaces/0compile.xml']
 
 	feed = support.load_feed(src_feed)
 
