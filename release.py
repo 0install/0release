@@ -272,6 +272,10 @@ def do_release(local_feed, options):
 
 		scm.grep('\(^\\|[^=]\)\<\\(TODO\\|XXX\\|FIXME\\)\>')
 
+		branch = scm.get_current_branch()
+		if branch != "refs/heads/master":
+			print "\nWARNING: you are currently on the '%s' branch.\nThe release will be made from that branch.\n" % branch
+
 	def create_feed(target_feed, local_iface_path, archive_file, archive_name, main):
 		shutil.copyfile(local_iface_path, target_feed)
 
