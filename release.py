@@ -173,7 +173,9 @@ def do_release(local_feed, options):
 	assert os.path.isabs(local_impl_dir)
 	local_impl_dir = os.path.realpath(local_impl_dir)
 	assert os.path.isdir(local_impl_dir)
-	assert local_feed.local_path.startswith(local_impl_dir + os.sep)
+	if not local_feed.local_path.startswith(local_impl_dir + os.sep):
+		raise SafeException("Local feed path '%s' does not start with '%s'" %
+				(local_feed.local_path, local_impl_dir + os.sep))
 
 	# From the impl directory to the feed
 	# NOT relative to the archive root (in general)
