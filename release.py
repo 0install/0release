@@ -224,7 +224,11 @@ def do_release(local_feed, options):
 		support.make_archives_relative(new_impls_feed)
 		oldcwd = os.getcwd()
 		try:
-			repo.cmd.main(['0repo', 'add', '--', new_impls_feed])
+			cmd = ['0repo', 'add', '--', new_impls_feed]
+			print "Handing off to 0repo:"
+			print " ".join(cmd)
+			print ""
+			repo.cmd.main(cmd)
 		finally:
 			os.chdir(oldcwd)
 
