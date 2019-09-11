@@ -20,7 +20,7 @@ valid_phases = ['commit-release', 'generate-archive']
 
 TMP_BRANCH_NAME = '0release-tmp'
 
-test_command = os.environ['0TEST']
+test_command = os.environ['ZI_TEST']
 
 def run_unit_tests(local_feed):
 	print "Running self-tests..."

@@ -41,24 +41,24 @@
 
     <requires interface="http://0install.net/2006/interfaces/0publish">
       <version not-before="0.17"/>
-      <environment if-0install-version="..!1.13" insert="0publish" mode="replace" name="0PUBLISH"/>
-      <executable-in-var name="0PUBLISH"/>
+      <environment if-0install-version="..!1.13" insert="0publish" mode="replace" name="ZI_PUBLISH"/>
+      <executable-in-var name="ZI_PUBLISH"/>
     </requires>
 
     <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml">
       <version not-before="1.6"/>
-      <environment insert="" mode="replace" name="0RELEASE_ZEROINSTALL"/>
+      <environment insert="" mode="replace" name="ZI_RELEASE_ZEROINSTALL"/>
     </requires>
 
     <requires interface="http://0install.net/2008/interfaces/0test.xml">
       <version not-before="0.4-post"/>
-      <environment if-0install-version="..!1.13" insert="0test" mode="replace" name="0TEST"/>
-      <executable-in-var name="0TEST"/>
+      <environment if-0install-version="..!1.13" insert="0test" mode="replace" name="ZI_TEST"/>
+      <executable-in-var name="ZI_TEST"/>
     </requires>
 
     <requires interface="http://0install.net/2006/interfaces/0compile.xml">
       <version not-before="1.2"/>
-      <executable-in-var name="0COMPILE"/>
+      <executable-in-var name="ZI_COMPILE"/>
     </requires>
 
     <implementation id="." version="0.15-post"/>

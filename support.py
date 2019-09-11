@@ -48,7 +48,7 @@ def suggest_release_version(snapshot_version):
 	return model.format_version(version)
 
 def publish(feed_path, **kwargs):
-	args = [os.environ['0PUBLISH']]
+	args = [os.environ['ZI_PUBLISH']]
 	for k in kwargs:
 		value = kwargs[k] 
 		if value is True:

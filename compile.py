@@ -99,7 +99,7 @@ class Compiler:
 # This is the actual build process, running on the build machine
 def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
 	try:
-		COMPILE = [os.environ['0COMPILE']]
+		COMPILE = [os.environ['ZI_COMPILE']]
 	except KeyError:
 		# (build slave has an old 0release)
 		COMPILE = ['0launch', '--not-before=1.2', 'http://0install.net/2006/interfaces/0compile.xml']

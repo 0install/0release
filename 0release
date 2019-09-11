@@ -5,7 +5,7 @@
 from optparse import OptionParser
 import os, sys
 
-zi = os.environ.get("0RELEASE_ZEROINSTALL", None)
+zi = os.environ.get("ZI_RELEASE_ZEROINSTALL", None)
 if zi is not None:
 	# NOT the first element... that's us!
 	# (and we want our setup.py, not 0install's)
