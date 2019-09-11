@@ -66,25 +66,20 @@ def call_with_output_suppressed(cmd, stdin, expect_failure = False, **kwargs):
 	#print stdout, stderr
 	raise Exception("Return code %d from %s\nstdout: %s\nstderr: %s" % (child.returncode, cmd, stdout, stderr))
 
-def make_releases_dir(src_feed = '../hello/HelloWorld.xml', auto_upload = False):
+def make_releases_dir(src_feed = '../hello/HelloWorld.xml'):
 	os.chdir('releases')
 	call_with_output_suppressed(['0release', src_feed], None)
 	assert os.path.isfile('make-release')
 
 	lines = file('make-release').readlines()
-	lines[lines.index('ARCHIVE_DIR_PUBLIC_URL=\n')] = 'ARCHIVE_DIR_PUBLIC_URL=http://TESTING/releases/\\$RELEASE_VERSION\n'
 
 	# Force us to test against this version of 0release
 	for i, line in enumerate(lines):
-		if line.startswith('exec 0launch http://0install.net/2007/interfaces/0release.xml --release'):
-			lines[i] = '0release --release ' + line.split('--release ', 1)[1]
+		if line.startswith('exec 0launch http://0install.net/2007/interfaces/0release.xml'):
+			lines[i] = '0release \\\n'
 			break
 	else:
 		assert 0
-
-	if auto_upload:
-		os.mkdir('archives')
-		lines[lines.index('ARCHIVE_UPLOAD_COMMAND=\n')] = 'ARCHIVE_UPLOAD_COMMAND=\'cp "$@" ../archives/\'\n'
 
 	s = file('make-release', 'w')
 	s.write(''.join(lines))
@@ -111,6 +106,22 @@ class TestRelease(unittest.TestCase):
 		os.environ['XDG_CONFIG_HOME'] = config_dir
 		imp.reload(basedir)
 		assert basedir.xdg_config_home == config_dir
+
+		# Let GPG initialise (it's a bit verbose)
+		child = subprocess.Popen(['gpg', '-q', '--list-secret-keys'], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+		unused, unused = child.communicate()
+		child.wait()
+
+		run_repo(['create', 'my-repo', 'Testing <testing@example.com>'])
+		os.chdir('my-repo')
+
+		if '0repo-config' in sys.modules:
+			del sys.modules['0repo-config']
+
+		with open('0repo-config.py', 'at') as stream:
+			stream.write(CUSTOM_REPO_CONFIG)
+		run_repo(['register'])
+		os.chdir('..')
 
 	def tearDown(self):
 		os.chdir(mydir)
@@ -154,7 +165,7 @@ class TestRelease(unittest.TestCase):
 
 	def testBinaryRelease(self):
 		support.check_call(['tar', 'xzf', test_repo_c])
-		make_releases_dir(src_feed = '../c-prog/c-prog.xml', auto_upload = True)
+		make_releases_dir(src_feed = '../c-prog/c-prog.xml')
 
 		call_with_output_suppressed(['./make-release', '-k', 'Testing', '--builders=host'], '\nP\n\n')
 
@@ -180,9 +191,9 @@ class TestRelease(unittest.TestCase):
 		output, _ = c.communicate()
 
 		self.assertEquals("Hello from C! (version 1.1)\n", output)
-	
+
 	def get_public_feed(self, name, uri_basename):
-		with open(name, 'rb') as stream:
+		with open(os.path.join(self.tmp, 'my-repo', 'public', uri_basename), 'rb') as stream:
 			return model.ZeroInstallFeed(qdom.parse(stream))
 
 def run_repo(args):
@@ -198,31 +209,6 @@ def run_repo(args):
 		os.chdir(oldcwd)
 		sys.stdout = old_stdout
 
-class TestRepoRelease(TestRelease):
-	def setUp(self):
-		TestRelease.setUp(self)
-
-		# Let GPG initialise (it's a bit verbose)
-		child = subprocess.Popen(['gpg', '-q', '--list-secret-keys'], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
-		unused, unused = child.communicate()
-		child.wait()
-		
-		run_repo(['create', 'my-repo', 'Testing <testing@example.com>'])
-		os.chdir('my-repo')
-
-		if '0repo-config' in sys.modules:
-			del sys.modules['0repo-config']
-
-		with open('0repo-config.py', 'at') as stream:
-			stream.write(CUSTOM_REPO_CONFIG)
-		run_repo(['register'])
-		os.chdir('..')
-	
-	def get_public_feed(self, name, uri_basename):
-		with open(os.path.join(self.tmp, 'my-repo', 'public', uri_basename), 'rb') as stream:
-			return model.ZeroInstallFeed(qdom.parse(stream))
-	
 unittest.makeSuite(TestRelease)
-unittest.makeSuite(TestRepoRelease)
 if __name__ == '__main__':
 	unittest.main()
