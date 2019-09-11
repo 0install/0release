@@ -2,7 +2,10 @@
 # Copyright (C) 2009, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 
-from optparse import OptionParser
+#import coverage
+#coverage.process_startup()
+
+from optparse import OptionParser, SUPPRESS_HELP
 import os, sys
 
 zi = os.environ.get("ZI_RELEASE_ZEROINSTALL", None)
@@ -24,10 +27,10 @@ parser.add_option("", "--build-slave", help="compile a binary a source release c
 parser.add_option("-k", "--key", help="GPG key to use for signing", action='store', metavar='KEYID')
 parser.add_option("-v", "--verbose", help="more verbose output", action='count')
 parser.add_option("-r", "--release", help="make a new release", action='store_true')
-parser.add_option("", "--archive-dir-public-url", help="remote directory for releases", metavar='URL')
-parser.add_option("", "--master-feed-file", help="local file to extend with new releases", metavar='PATH')
-parser.add_option("", "--archive-upload-command", help="shell command to upload releases", metavar='COMMAND')
-parser.add_option("", "--master-feed-upload-command", help="shell command to upload feed", metavar='COMMAND')
+parser.add_option("", "--archive-dir-public-url", help=SUPPRESS_HELP, metavar='URL')
+parser.add_option("", "--master-feed-file", help=SUPPRESS_HELP, metavar='PATH')
+parser.add_option("", "--archive-upload-command", help=SUPPRESS_HELP, metavar='COMMAND')
+parser.add_option("", "--master-feed-upload-command", help=SUPPRESS_HELP, metavar='COMMAND')
 parser.add_option("", "--public-scm-repository", help="the name of the repository to push to", metavar='REPOS')
 parser.add_option("", "--release-version", help="explicitly set the version of this release", metavar='VERSION')
 parser.add_option("-V", "--version", help="display version information", action='store_true')

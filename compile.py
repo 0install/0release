@@ -12,7 +12,6 @@ class Compiler:
 	def __init__(self, options, src_feed_name, release_version):
 		self.src_feed_name = src_feed_name
 		self.src_feed = support.load_feed(src_feed_name)
-		self.archive_dir_public_url = support.get_archive_url(options, release_version, '')
 
 		self.config = ConfigParser.RawConfigParser()
 
@@ -68,7 +67,7 @@ class Compiler:
 
 				if start: support.show_and_run(start, [])
 				try:
-					args = [os.path.basename(self.src_feed_name), archive_file, self.archive_dir_public_url, binary_feed + '.new']
+					args = [os.path.basename(self.src_feed_name), archive_file, '', binary_feed + '.new']
 					if not command:
 						assert target == 'host', 'Missing build command'
 						support.check_call([sys.executable, sys.argv[0], '--build-slave'] + args)
@@ -98,6 +97,7 @@ class Compiler:
 
 # This is the actual build process, running on the build machine
 def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
+	if archive_dir_public_url: print "WARNING: archive_dir_public_url is deprecated!"
 	try:
 		COMPILE = [os.environ['ZI_COMPILE']]
 	except KeyError:

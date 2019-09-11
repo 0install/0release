@@ -31,109 +31,15 @@ def run_unit_tests(local_feed):
 	if exitstatus:
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
 
-def upload_archives(options, status, uploads):
-	# For each binary or source archive in uploads, ensure it is available
-	# from options.archive_dir_public_url
-
-	# We try to do all the uploads together first, and then verify them all
-	# afterwards. This is because we may have to wait for them to be moved
-	# from an incoming queue before we can test them.
-
-	def url(archive):
-		return support.get_archive_url(options, status.release_version, archive)
-
-	# Check that url exists and has the given size
-	def is_uploaded(url, size):
-		if url.startswith('http://TESTING/releases'):
-			return True
-
-		print "Testing URL %s..." % url
-		try:
-			actual_size = int(support.get_size(url))
-		except Exception, ex:
-			print "Can't get size of '%s': %s" % (url, ex)
-			return False
-		else:
-			if actual_size == size:
-				return True
-			print "WARNING: %s exists, but size is %d, not %d!" % (url, actual_size, size)
-			return False
-
-	# status.verified_uploads is an array of status flags:
-	description = {
-		'N': 'Upload required',
-		'A': 'Upload has been attempted, but we need to check whether it worked',
-		'V': 'Upload has been checked (exists and has correct size)',
-	}
-
-	if status.verified_uploads is None:
-		# First time around; no point checking for existing uploads
-		status.verified_uploads = 'N' * len(uploads)
-		status.save()
-
-	while True:
-		print "\nUpload status:"
-		for i, stat in enumerate(status.verified_uploads):
-			print "- %s : %s" % (uploads[i], description[stat])
-		print
-
-		# Break if finished
-		if status.verified_uploads == 'V' * len(uploads):
-			break
-
-		# Find all New archives
-		to_upload = []
-		for i, stat in enumerate(status.verified_uploads):
-			assert stat in 'NAV'
-			if stat == 'N':
-				to_upload.append(uploads[i])
-				print "Upload %s/%s as %s" % (status.release_version, uploads[i], url(uploads[i]))
-
-		cmd = options.archive_upload_command.strip()
-
-		if to_upload:
-			# Mark all New items as Attempted
-			status.verified_uploads = status.verified_uploads.replace('N', 'A')
-			status.save()
-
-			# Upload them...
-			if cmd:
-				support.show_and_run(cmd, to_upload)
-			else:
-				if len(to_upload) == 1:
-					print "No upload command is set => please upload the archive manually now"
-					raw_input('Press Return once the archive is uploaded.')
-				else:
-					print "No upload command is set => please upload the archives manually now"
-					raw_input('Press Return once the %d archives are uploaded.' % len(to_upload))
-
-		# Verify all Attempted uploads
-		new_stat = ''
-		for i, stat in enumerate(status.verified_uploads):
-			assert stat in 'AV', status.verified_uploads
-			if stat == 'A' :
-				if not is_uploaded(url(uploads[i]), os.path.getsize(uploads[i])):
-					print "** Archive '%s' still not uploaded! Try again..." % uploads[i]
-					stat = 'N'
-				else:
-					stat = 'V'
-			new_stat += stat
-
-		status.verified_uploads = new_stat
-		status.save()
-
-		if 'N' in new_stat and cmd:
-			raw_input('Press Return to try again.')
-
-legacy_warning = """*** Note: the upload functions of 0release
-*** (--archive-dir-public-url, --master-feed-file, --archive-upload-command
-*** and --master-feed-upload-command) are being replaced by 0repo. They may
-*** go away in future. If 0repo is not suitable for your needs, please
-*** contact the mailing list to let us know.
-***
-***   http://www.0install.net/0repo.html
-***   http://www.0install.net/support.html#lists
-"""
+legacy_warning = """\
+The upload functions of 0release (--archive-dir-public-url,
+--master-feed-file, --archive-upload-command and --master-feed-upload-command)
+have been removed. Instead, 0release now just passes the release over to 0repo
+for publishing. If 0repo is not suitable for your needs, please contact the
+mailing list to let us know.
+ 
+  http://www.0install.net/0repo.html
+  http://www.0install.net/support.html#lists"""
 
 def do_version_substitutions(impl_dir, version_substitutions, new_version):
 	for (rel_path, subst) in version_substitutions:
@@ -158,10 +64,7 @@ def do_version_substitutions(impl_dir, version_substitutions, new_version):
 
 def do_release(local_feed, options):
 	if options.master_feed_file or options.archive_dir_public_url or options.archive_upload_command or options.master_feed_upload_command:
-		print(legacy_warning)
-
-	if options.master_feed_file:
-		options.master_feed_file = os.path.abspath(options.master_feed_file)
+		raise SafeException(legacy_warning)
 
 	if not local_feed.feed_for:
 		raise SafeException("Feed %s missing a <feed-for> element" % local_feed.local_path)
@@ -263,9 +166,6 @@ def do_release(local_feed, options):
 		status.save()
 
 	def ensure_ready_to_release():
-		#if not options.master_feed_file:
-		#	raise SafeException("Master feed file not set! Check your configuration")
-
 		scm.ensure_committed()
 		scm.ensure_versioned(os.path.abspath(local_feed.local_path))
 		info("No uncommitted changes. Good.")
@@ -283,7 +183,7 @@ def do_release(local_feed, options):
 
 		support.publish(target_feed,
 			set_main = main,
-			archive_url = support.get_archive_url(options, status.release_version, os.path.basename(archive_file)),
+			archive_url = os.path.basename(archive_file),
 			archive_file = archive_file,
 			archive_extract = archive_name)
 
@@ -328,55 +228,6 @@ def do_release(local_feed, options):
 		finally:
 			os.chdir(oldcwd)
 
-	def release_without_0repo(archive_file, new_impls_feed):
-		assert options.master_feed_file
-
-		if not options.archive_dir_public_url:
-			raise SafeException("Archive directory public URL is not set! Edit configuration and try again.")
-
-		if status.updated_master_feed:
-			print "Already added to master feed. Not changing."
-		else:
-			publish_opts = {}
-			if os.path.exists(options.master_feed_file):
-				# Check we haven't already released this version
-				master = support.load_feed(os.path.realpath(options.master_feed_file))
-				existing_releases = [impl for impl in master.implementations.values() if impl.get_version() == status.release_version]
-				if len(existing_releases):
-					raise SafeException("Master feed %s already contains an implementation with version number %s!" % (options.master_feed_file, status.release_version))
-
-				previous_release = get_previous_release(status.release_version)
-				previous_testing_releases = [impl for impl in master.implementations.values() if impl.get_version() == previous_release
-													     and impl.upstream_stability == model.stability_levels["testing"]]
-				if previous_testing_releases:
-					print "The previous release, version %s, is still marked as 'testing'. Set to stable?" % previous_release
-					if support.get_choice(['Yes', 'No']) == 'Yes':
-						publish_opts['select_version'] = previous_release
-						publish_opts['set_stability'] = "stable"
-
-			support.publish(options.master_feed_file, local = new_impls_feed, xmlsign = True, key = options.key, **publish_opts)
-
-			status.updated_master_feed = 'true'
-			status.save()
-
-		# Copy files...
-		uploads = [os.path.basename(archive_file)]
-		for b in compiler.get_binary_feeds():
-			binary_feed = support.load_feed(b)
-			impl, = binary_feed.implementations.values()
-			uploads.append(os.path.basename(impl.download_sources[0].url))
-
-		upload_archives(options, status, uploads)
-
-		feed_base = os.path.dirname(list(local_feed.feed_for)[0])
-		feed_files = [options.master_feed_file]
-		print "Upload %s into %s" % (', '.join(feed_files), feed_base)
-		cmd = options.master_feed_upload_command.strip()
-		if cmd:
-			support.show_and_run(cmd, feed_files)
-		else:
-			print "NOTE: No feed upload command set => you'll have to upload them yourself!"
-
 	def accept_and_publish(archive_file, src_feed_name):
 		if status.tagged:
 			print "Already tagged in SCM. Not re-tagging."
@@ -413,10 +264,9 @@ def do_release(local_feed, options):
 		# TODO: support uploading to a sub-feed (requires support in 0repo too)
 		master_feed, = local_feed.feed_for
 		repository = registry.lookup(master_feed, missing_ok = True)
-		if repository:
-			release_via_0repo(new_impls_feed)
-		else:
-			release_without_0repo(archive_file, new_impls_feed)
+		if not repository:
+			raise SafeException("No repository for %s has been registered with 0repo!" % master_feed)
+		release_via_0repo(new_impls_feed)
 
 		os.unlink(new_impls_feed)
 

@@ -108,7 +108,7 @@ def show_diff(from_dir, to_dir):
 
 class Status(object):
 	__slots__ = ['old_snapshot_version', 'release_version', 'head_before_release', 'new_snapshot_version',
-		     'head_at_release', 'created_archive', 'src_tests_passed', 'tagged', 'verified_uploads', 'updated_master_feed']
+		     'head_at_release', 'created_archive', 'src_tests_passed', 'tagged', 'verified_uploads']
 	def __init__(self):
 		for name in self.__slots__:
 			setattr(self, name, None)
@@ -134,72 +134,6 @@ class Status(object):
 			os.unlink(tmp_name)
 			raise
 
-def host(address):
-	if hasattr(address, 'hostname'):
-		return address.hostname
-	else:
-		return address[1].split(':', 1)[0]
-
-def port(address):
-	if hasattr(address, 'port'):
-		return address.port
-	else:
-		port = address[1].split(':', 1)[1:]
-		if port:
-			return int(port[0])
-		else:
-			return None
-
-def get_http_size(url, ttl = 1):
-	assert url.lower().startswith('http://')
-
-	address = urlparse.urlparse(url)
-	http = httplib.HTTPConnection(host(address), port(address) or 80)
-
-	parts = url.split('/', 3)
-	if len(parts) == 4:
-		path = parts[3]
-	else:
-		path = ''
-
-	http.request('HEAD', '/' + path, headers = {'Host': host(address)})
-	response = http.getresponse()
-	try:
-		if response.status == 200:
-			return response.getheader('Content-Length')
-		elif response.status in (301, 302):
-			new_url_rel = response.getheader('Location') or response.getheader('URI')
-			new_url = urlparse.urljoin(url, new_url_rel)
-		else:
-			raise SafeException("HTTP error: got status code %s" % response.status)
-	finally:
-		response.close()
-
-	if ttl:
-		info("Resource moved! Checking new URL %s" % new_url)
-		assert new_url
-		return get_http_size(new_url, ttl - 1)
-	else:
-		raise SafeException('Too many redirections.')
-
-def get_ftp_size(url):
-	address = urlparse.urlparse(url)
-	ftp = ftplib.FTP(host(address))
-	try:
-		ftp.login()
-		return ftp.size(url.split('/', 3)[3])
-	finally:
-		ftp.close()
-
-def get_size(url):
-	scheme = urlparse.urlparse(url)[0].lower()
-	if scheme.startswith('http'):
-		return get_http_size(url)
-	elif scheme.startswith('ftp'):
-		return get_ftp_size(url)
-	else:
-		raise SafeException("Unknown scheme '%s' in '%s'" % (scheme, url))
-
 def unpack_tarball(archive_file):
 	tar = tarfile.open(archive_file, 'r:bz2')
 	members = [m for m in tar.getmembers() if m.name != 'pax_global_header']
@@ -224,15 +158,6 @@ def make_readonly_recursive(path):
 			full = os.path.join(root, d)
 			mode = os.stat(full).st_mode
 			os.chmod(full, mode & 0o555)
-
-def get_archive_url(options, release_version, archive):
-	if not options.archive_dir_public_url:
-		return archive			# Not needed with 0repo
-
-	archive_dir_public_url = options.archive_dir_public_url.replace('$RELEASE_VERSION', release_version)
-	if not archive_dir_public_url.endswith('/'):
-		archive_dir_public_url += '/'
-	return archive_dir_public_url + archive
 
 def make_archives_relative(feed):
 	with open(feed, 'rb') as stream:
