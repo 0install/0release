@@ -108,7 +108,7 @@ def show_diff(from_dir, to_dir):
 
 class Status(object):
 	__slots__ = ['old_snapshot_version', 'release_version', 'head_before_release', 'new_snapshot_version',
-		     'head_at_release', 'created_archive', 'src_tests_passed', 'tagged', 'verified_uploads']
+		     'head_at_release', 'created_archive', 'src_tests_passed', 'tagged']
 	def __init__(self):
 		for name in self.__slots__:
 			setattr(self, name, None)
