@@ -61,6 +61,6 @@
       <executable-in-var name="ZI_COMPILE"/>
     </requires>
 
-    <implementation id="." version="0.15-post"/>
+    <implementation id="." released="2019-09-14" version="0.16"/>
   </group>
 </interface>
