@@ -8,7 +8,7 @@
     0release can help you to create new releases easily.
   </description>
 
-  <homepage>http://0install.net/0release.xml</homepage>
+  <homepage>https://docs.0install.net/tools/0release/</homepage>
 
   <feed-for interface="http://0install.net/2007/interfaces/0release.xml"/>
 
@@ -19,18 +19,18 @@
 
   <group license="OSI Approved :: GNU Lesser General Public License (LGPL)" main="0release">
     <command name="run" path="0release">
-      <runner interface="http://repo.roscidus.com/python/python"/>
+      <runner interface="https://apps.0install.net/python/python.xml"/>
     </command>
 
     <command name="test" path="tests/testall.py">
-      <runner interface="http://repo.roscidus.com/python/python"/>
+      <runner interface="https://apps.0install.net/python/python.xml"/>
       <executable-in-path name="0release"/>
-      <requires interface="http://repo.roscidus.com/devel/make">
+      <requires interface="https://apps.0install.net/devel/make.xml">
 	<executable-in-path name="make"/>
       </requires>
     </command>
 
-    <requires interface="http://repo.roscidus.com/python/python">
+    <requires interface="https://apps.0install.net/python/python.xml">
       <version before="3"/>
     </requires>
 
