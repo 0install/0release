@@ -54,12 +54,15 @@ def check_uploaded_archive(archive, url):
 	pass
 """
 
+def file_contents(path):
+	with open(path, 'r') as s: return s.read()
+
 def call_with_output_suppressed(cmd, stdin, expect_failure = False, **kwargs):
 	#cmd = [cmd[0], '-v'] + cmd[1:]
 	if stdin:
-		child = subprocess.Popen(cmd, stdin = subprocess.PIPE, stdout = subprocess.PIPE, **kwargs)
+		child = subprocess.Popen(cmd, encoding = 'utf-8', stdin = subprocess.PIPE, stdout = subprocess.PIPE, **kwargs)
 	else:
-		child = subprocess.Popen(cmd, stdout = subprocess.PIPE, **kwargs)
+		child = subprocess.Popen(cmd, encoding = 'utf-8', stdout = subprocess.PIPE, **kwargs)
 	stdout, stderr  = child.communicate(stdin)
 	if (child.returncode != 0) == expect_failure:
 		return stdout, stderr
@@ -71,7 +74,8 @@ def make_releases_dir(src_feed = '../hello/HelloWorld.xml'):
 	call_with_output_suppressed(['0release', src_feed], None)
 	assert os.path.isfile('make-release')
 
-	lines = file('make-release').readlines()
+	with open('make-release') as stream:
+		lines = stream.readlines()
 
 	# Force us to test against this version of 0release
 	for i, line in enumerate(lines):
@@ -81,9 +85,8 @@ def make_releases_dir(src_feed = '../hello/HelloWorld.xml'):
 	else:
 		assert 0
 
-	s = file('make-release', 'w')
-	s.write(''.join(lines))
-	s.close()
+	with open('make-release', 'w') as s:
+		s.write(''.join(lines))
 
 class TestRelease(unittest.TestCase):
 	def setUp(self):
@@ -108,7 +111,7 @@ class TestRelease(unittest.TestCase):
 		assert basedir.xdg_config_home == config_dir
 
 		# Let GPG initialise (it's a bit verbose)
-		child = subprocess.Popen(['gpg', '-q', '--list-secret-keys'], stdout = subprocess.PIPE, stderr = subprocess.PIPE)
+		child = subprocess.Popen(['gpg', '-q', '--list-secret-keys'], stdout = subprocess.PIPE, stderr = subprocess.PIPE, encoding = 'utf-8')
 		unused, unused = child.communicate()
 		child.wait()
 
@@ -135,9 +138,9 @@ class TestRelease(unittest.TestCase):
 
 		call_with_output_suppressed(['./make-release', '-k', 'Testing'], '\nP\nY\n\n')
 
-		assert 'Prints "Hello World"' in file('0.1/changelog-0.1').read()
-		assert 'Prints "Hello World"' not in file('0.2/changelog-0.2').read()
-		new_v = file('../hello/hello.py').read()
+		assert 'Prints "Hello World"' in file_contents('0.1/changelog-0.1')
+		assert 'Prints "Hello World"' not in file_contents('0.2/changelog-0.2')
+		new_v = file_contents('../hello/hello.py')
 		assert '0.2-post' in new_v, new_v
 
 	def testUncommitted(self):
@@ -155,13 +158,13 @@ class TestRelease(unittest.TestCase):
 		os.chdir('..')
 		make_releases_dir()
 
-		assert "version = '0.2'\n" not in file('../hello/hello.py').read()
+		assert "version = '0.2'\n" not in file_contents('../hello/hello.py')
 
-		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE, stdout = subprocess.PIPE)
+		child = subprocess.Popen(['./make-release', '-k', 'Testing'], stdin = subprocess.PIPE, stdout = subprocess.PIPE, encoding = 'utf-8')
 		unused, unused = child.communicate('\nP\n\n')
 		assert child.returncode == 0
 
-		assert "version = '0.2'\n" in file('../hello/hello.py').read()
+		assert "version = '0.2'\n" in file_contents('../hello/hello.py')
 
 	def testBinaryRelease(self):
 		support.check_call(['tar', 'xzf', test_repo_c])
@@ -187,7 +190,7 @@ class TestRelease(unittest.TestCase):
 		host_archive = os.path.basename(host_download.url)
 		assert host_archive in archives
 		support.check_call(['tar', 'xjf', os.path.join('archives', host_archive)])
-		c = subprocess.Popen(['0launch', os.path.join(host_download.extract, '0install', 'feed.xml')], stdout = subprocess.PIPE)
+		c = subprocess.Popen(['0launch', os.path.join(host_download.extract, '0install', 'feed.xml')], stdout = subprocess.PIPE, encoding = 'utf-8')
 		output, _ = c.communicate()
 
 		self.assertEqual("Hello from C! (version 1.1)\n", output)

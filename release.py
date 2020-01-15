@@ -200,16 +200,13 @@ def do_release(local_feed, options):
 		return None
 
 	def export_changelog(previous_release):
-		changelog = file('changelog-%s' % status.release_version, 'w')
-		try:
+		with open('changelog-%s' % status.release_version, 'w') as changelog:
 			try:
 				scm.export_changelog(previous_release, status.head_before_release, changelog)
 			except SafeException as ex:
 				print("WARNING: Failed to generate changelog: " + str(ex))
 			else:
 				print("Wrote changelog from %s to here as %s" % (previous_release or 'start', changelog.name))
-		finally:
-			changelog.close()
 
 	def fail_candidate():
 		cwd = os.getcwd()
@@ -262,7 +259,7 @@ def do_release(local_feed, options):
 				bin_doc = minidom.parse(b)
 			merge.merge(doc, bin_doc)
 		new_impls_feed = 'merged.xml'
-		with open(new_impls_feed, 'wb') as stream:
+		with open(new_impls_feed, 'w') as stream:
 			doc.writexml(stream)
 
 		# TODO: support uploading to a sub-feed (requires support in 0repo too)

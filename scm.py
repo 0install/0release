@@ -24,7 +24,7 @@ class GIT(SCM):
 			raise SafeException("Git %s failed with exit code %d" % (repr(args), code))
 
 	def _run_stdout(self, args, **kwargs):
-		child = self._run(args, stdout = subprocess.PIPE, **kwargs)
+		child = self._run(args, stdout = subprocess.PIPE, encoding = 'utf-8', **kwargs)
 		stdout, unused = child.communicate()
 		if child.returncode:
 			raise SafeException('Failed to get current branch! Exit code %d: %s' % (child.returncode, stdout))
@@ -41,7 +41,7 @@ class GIT(SCM):
 		self._run_check(['reset', '--hard', revision])
 
 	def ensure_committed(self):
-		child = self._run(["status", "--porcelain", "-uno"], stdout = subprocess.PIPE)
+		child = self._run(["status", "--porcelain", "-uno"], stdout = subprocess.PIPE, encoding = 'utf-8')
 		stdout, unused = child.communicate()
 		if child.returncode == 0:
 			# Git >= 1.7
@@ -50,7 +50,7 @@ class GIT(SCM):
 			return
 		else:
 			# Old Git
-			child = self._run(["status", "-a"], stdout = subprocess.PIPE)
+			child = self._run(["status", "-a"], stdout = subprocess.PIPE, encoding = 'utf-8')
 			stdout, unused = child.communicate()
 			if not child.returncode:
 				raise SafeException('Uncommitted changes! Use "git-commit -a" to commit them. Changes are:\n' + stdout)
@@ -84,7 +84,7 @@ class GIT(SCM):
 		return current_branch
 
 	def get_tagged_versions(self):
-		child = self._run(['tag', '-l', 'v*'], stdout = subprocess.PIPE)
+		child = self._run(['tag', '-l', 'v*'], stdout = subprocess.PIPE, encoding = 'utf-8')
 		stdout, unused = child.communicate()
 		status = child.wait()
 		if status:
@@ -99,7 +99,7 @@ class GIT(SCM):
 
 	def ensure_no_tag(self, version):
 		tag = self.make_tag(version)
-		child = self._run(['tag', '-l', tag], stdout = subprocess.PIPE)
+		child = self._run(['tag', '-l', tag], stdout = subprocess.PIPE, encoding = 'utf-8')
 		stdout, unused = child.communicate()
 		if tag in stdout.split('\n'):
 			raise SafeException(("Release %s is already tagged! If you want to replace it, do\n" + 
@@ -107,8 +107,9 @@ class GIT(SCM):
 
 	def export(self, prefix, archive_file, revision):
 		child = self._run(['archive', '--format=tar', '--prefix=' + prefix + os.sep, revision], stdout = subprocess.PIPE)
-		subprocess.check_call(['bzip2', '-'], stdin = child.stdout, stdout = file(archive_file, 'w'))
-		status = child.wait()
+		with open(archive_file, 'wb') as stream:
+			subprocess.check_call(['bzip2', '-'], stdin = child.stdout, stdout = stream)
+			status = child.wait()
 		if status:
 			if os.path.exists(archive_file):
 				os.unlink(archive_file)
@@ -131,7 +132,7 @@ class GIT(SCM):
 	def commit(self, message, branch, parent):
 		self._run_check(['add', '-u'])		# Commit all changed tracked files to index
 		tree = self._run_stdout(['write-tree']).strip()
-		child = self._run(['commit-tree', tree, '-p', parent], stdin = subprocess.PIPE, stdout = subprocess.PIPE)
+		child = self._run(['commit-tree', tree, '-p', parent], stdin = subprocess.PIPE, stdout = subprocess.PIPE, encoding = 'utf-8')
 		stdout, unused = child.communicate(message)
 		commit = stdout.strip()
 		info("Committed as %s", commit)
@@ -139,7 +140,7 @@ class GIT(SCM):
 		return commit
 
 	def get_head_revision(self):
-		proc = self._run(['rev-parse', 'HEAD'], stdout = subprocess.PIPE)
+		proc = self._run(['rev-parse', 'HEAD'], stdout = subprocess.PIPE, encoding = 'utf-8')
 		stdout, unused = proc.communicate()
 		if proc.returncode:
 			raise Exception("git rev-parse failed with exit code %d" % proc.returncode)

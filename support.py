@@ -114,20 +114,20 @@ class Status(object):
 			setattr(self, name, None)
 
 		if os.path.isfile(release_status_file):
-			for line in file(release_status_file):
-				assert line.endswith('\n')
-				line = line[:-1]
-				name, value = line.split('=')
-				setattr(self, name, value)
-				info("Loaded status %s=%s", name, value)
+			with open(release_status_file, 'r') as stream:
+				for line in stream.readlines():
+					assert line.endswith('\n')
+					line = line[:-1]
+					name, value = line.split('=')
+					setattr(self, name, value)
+					info("Loaded status %s=%s", name, value)
 
 	def save(self):
 		tmp_name = release_status_file + '.new'
-		tmp = file(tmp_name, 'w')
 		try:
-			lines = ["%s=%s\n" % (name, getattr(self, name)) for name in self.__slots__ if getattr(self, name)]
-			tmp.write(''.join(lines))
-			tmp.close()
+			with open(tmp_name, 'w') as tmp:
+				lines = ["%s=%s\n" % (name, getattr(self, name)) for name in self.__slots__ if getattr(self, name)]
+				tmp.write(''.join(lines))
 			portable_rename(tmp_name, release_status_file)
 			info("Wrote status to %s", release_status_file)
 		except:
@@ -167,6 +167,6 @@ def make_archives_relative(feed):
 		assert href, 'Missing href on %r' % elem
 		if '/' in href:
 			elem.setAttribute('href', href.rsplit('/', 1)[1])
-	with open(feed, 'wb') as stream:
+	with open(feed, 'w') as stream:
 		doc.writexml(stream)
-		stream.write(b'\n')
+		stream.write('\n')

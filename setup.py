@@ -19,8 +19,8 @@ def init_releases_directory(feed):
 	master_feed_name = feed.get_name().replace(' ', '-') + '.xml'
 
 	if os.name == 'nt':
-		make_release = file('make-release.bat', 'w')
-		make_release.write("""@echo off
+		with open('make-release.bat', 'w') as make_release:
+			make_release.write("""@echo off
 
 :: Your public version control repository. When publishing, the new
 :: HEAD and the release tag will be pushed to this using a command
@@ -37,8 +37,8 @@ cd /d "%%~dp0"
 		make_release.close()
 		print("Success - created script:\n %s" % os.path.abspath('make-release.bat'))
 	else:
-		make_release = file('make-release', 'w')
-		make_release.write("""#!/bin/sh
+		with open('make-release', 'w') as make_release:
+			make_release.write("""#!/bin/sh
 
 # Your public version control repository. When publishing, the new
 # HEAD and the release tag will be pushed to this using a command
