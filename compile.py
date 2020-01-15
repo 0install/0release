@@ -2,7 +2,7 @@
 # See the README file for details, or visit http://0install.net.
 
 import tempfile, shutil, os, sys
-import ConfigParser
+import configparser
 from logging import info
 from zeroinstall.support import basedir, portable_rename
 
@@ -13,7 +13,7 @@ class Compiler:
 		self.src_feed_name = src_feed_name
 		self.src_feed = support.load_feed(src_feed_name)
 
-		self.config = ConfigParser.RawConfigParser()
+		self.config = configparser.RawConfigParser()
 
 		# Start with a default configuration
 		self.config.add_section('global')
@@ -50,7 +50,7 @@ class Compiler:
 	def build_binaries(self):
 		if not self.targets: return
 
-		print "Source package, so generating binaries..."
+		print("Source package, so generating binaries...")
 
 		archive_file = support.get_archive_basename(self.src_impl)
 
@@ -61,9 +61,9 @@ class Compiler:
 
 			binary_feed = 'binary-' + target + '.xml'
 			if os.path.exists(binary_feed):
-				print "Feed %s already exists; not rebuilding" % binary_feed
+				print("Feed %s already exists; not rebuilding" % binary_feed)
 			else:
-				print "\nBuilding binary with builder '%s' ...\n" % target
+				print("\nBuilding binary with builder '%s' ...\n" % target)
 
 				if start: support.show_and_run(start, [])
 				try:
@@ -92,12 +92,12 @@ class Compiler:
 	def get(self, section, option, default):
 		try:
 			return self.config.get(section, option)
-		except ConfigParser.NoOptionError:
+		except configparser.NoOptionError:
 			return default
 
 # This is the actual build process, running on the build machine
 def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
-	if archive_dir_public_url: print "WARNING: archive_dir_public_url is deprecated!"
+	if archive_dir_public_url: print("WARNING: archive_dir_public_url is deprecated!")
 	try:
 		COMPILE = [os.environ['ZI_COMPILE']]
 	except KeyError:
@@ -110,7 +110,7 @@ def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
 	archive_file = os.path.abspath(archive_file)
 	target_feed = os.path.abspath(target_feed)
 
-	impl, = feed.implementations.values()
+	impl, = list(feed.implementations.values())
 
 	tmpdir = tempfile.mkdtemp(prefix = '0release-')
 	try:
@@ -121,7 +121,7 @@ def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
 		support.unpack_tarball(archive_file)
 		portable_rename(impl.download_sources[0].extract, os.path.join(depdir, impl.id))
 
-		config = ConfigParser.RawConfigParser()
+		config = configparser.RawConfigParser()
 		config.add_section('compile')
 		config.set('compile', 'download-base-url', archive_dir_public_url)
 		config.set('compile', 'version-modifier', '')
@@ -145,7 +145,7 @@ def build_slave(src_feed, archive_file, archive_dir_public_url, target_feed):
 
 		shutil.move(archive_file, os.path.join(os.path.dirname(target_feed), archive_file))
 	except:
-		print "\nLeaving temporary directory %s for inspection...\n" % tmpdir
+		print("\nLeaving temporary directory %s for inspection...\n" % tmpdir)
 		raise
 	else:
 		shutil.rmtree(tmpdir)

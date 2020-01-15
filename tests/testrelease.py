@@ -2,7 +2,7 @@
 # Copyright (C) 2007, Thomas Leonard
 # See the README file for details, or visit http://0install.net.
 import sys, os, shutil, tempfile, subprocess, imp
-from StringIO import StringIO
+from io import StringIO
 import unittest
 
 from zeroinstall.injector import model, qdom, writer
@@ -92,7 +92,7 @@ class TestRelease(unittest.TestCase):
 		support.check_call(['tar', 'xzf', test_gpg])
 		os.mkdir('releases')
 		os.environ['GNUPGHOME'] = self.tmp + '/gpg'
-		os.chmod(os.environ['GNUPGHOME'], 0700)
+		os.chmod(os.environ['GNUPGHOME'], 0o700)
 
 		config_dir = os.path.join(self.tmp, 'config')
 		injector_config = os.path.join(config_dir, '0install.net', 'injector')
@@ -172,8 +172,8 @@ class TestRelease(unittest.TestCase):
 		feed = self.get_public_feed('HelloWorld-in-C.xml', 'c-prog.xml')
 
 		assert len(feed.implementations) == 2
-		src_impl, = [x for x in feed.implementations.values() if x.arch == '*-src']
-		host_impl, = [x for x in feed.implementations.values() if x.arch != '*-src']
+		src_impl, = [x for x in list(feed.implementations.values()) if x.arch == '*-src']
+		host_impl, = [x for x in list(feed.implementations.values()) if x.arch != '*-src']
 
 		assert src_impl.main == None
 		assert host_impl.main == 'hello'
@@ -190,7 +190,7 @@ class TestRelease(unittest.TestCase):
 		c = subprocess.Popen(['0launch', os.path.join(host_download.extract, '0install', 'feed.xml')], stdout = subprocess.PIPE)
 		output, _ = c.communicate()
 
-		self.assertEquals("Hello from C! (version 1.1)\n", output)
+		self.assertEqual("Hello from C! (version 1.1)\n", output)
 
 	def get_public_feed(self, name, uri_basename):
 		with open(os.path.join(self.tmp, 'my-repo', 'public', uri_basename), 'rb') as stream:

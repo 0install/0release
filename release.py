@@ -23,10 +23,10 @@ TMP_BRANCH_NAME = '0release-tmp'
 test_command = os.environ['ZI_TEST']
 
 def run_unit_tests(local_feed):
-	print "Running self-tests..."
+	print("Running self-tests...")
 	exitstatus = subprocess.call([test_command, '--', local_feed])
 	if exitstatus == 2:
-		print "SKIPPED unit tests for %s (no 'test' command)" % local_feed
+		print("SKIPPED unit tests for %s (no 'test' command)" % local_feed)
 		return
 	if exitstatus:
 		raise SafeException("Self-test failed with exit status %d" % exitstatus)
@@ -124,15 +124,15 @@ def do_release(local_feed, options):
 		full_env = os.environ.copy()
 		full_env.update(env)
 		for x in phase_actions[phase]:
-			print "[%s]: %s" % (phase, x)
+			print("[%s]: %s" % (phase, x))
 			support.check_call(x, shell = True, cwd = cwd, env = full_env)
 
 	def set_to_release():
-		print "Snapshot version is " + local_impl.get_version()
+		print("Snapshot version is " + local_impl.get_version())
 		release_version = options.release_version
 		if release_version is None:
 			suggested = support.suggest_release_version(local_impl.get_version())
-			release_version = raw_input("Version number for new release [%s]: " % suggested)
+			release_version = input("Version number for new release [%s]: " % suggested)
 			if not release_version:
 				release_version = suggested
 
@@ -145,7 +145,7 @@ def do_release(local_feed, options):
 		do_version_substitutions(local_impl_dir, version_substitutions, release_version)
 		run_hooks('commit-release', cwd = working_copy, env = {'RELEASE_VERSION': release_version})
 
-		print "Releasing version", release_version
+		print("Releasing version", release_version)
 		support.publish(local_feed.local_path, set_released = 'today', set_version = release_version)
 
 		support.backup_if_exists(release_version)
@@ -176,7 +176,7 @@ def do_release(local_feed, options):
 
 		branch = scm.get_current_branch()
 		if branch != "refs/heads/master":
-			print "\nWARNING: you are currently on the '%s' branch.\nThe release will be made from that branch.\n" % branch
+			print("\nWARNING: you are currently on the '%s' branch.\nThe release will be made from that branch.\n" % branch)
 
 	def create_feed(target_feed, local_iface_path, archive_file, archive_name, main):
 		shutil.copyfile(local_iface_path, target_feed)
@@ -204,10 +204,10 @@ def do_release(local_feed, options):
 		try:
 			try:
 				scm.export_changelog(previous_release, status.head_before_release, changelog)
-			except SafeException, ex:
-				print "WARNING: Failed to generate changelog: " + str(ex)
+			except SafeException as ex:
+				print("WARNING: Failed to generate changelog: " + str(ex))
 			else:
-				print "Wrote changelog from %s to here as %s" % (previous_release or 'start', changelog.name)
+				print("Wrote changelog from %s to here as %s" % (previous_release or 'start', changelog.name))
 		finally:
 			changelog.close()
 
@@ -217,7 +217,7 @@ def do_release(local_feed, options):
 		support.backup_if_exists(cwd)
 		scm.delete_branch(TMP_BRANCH_NAME)
 		os.unlink(support.release_status_file)
-		print "Restored to state before starting release. Make your fixes and try again..."
+		print("Restored to state before starting release. Make your fixes and try again...")
 
 	def release_via_0repo(new_impls_feed):
 		import repo.cmd
@@ -225,16 +225,16 @@ def do_release(local_feed, options):
 		oldcwd = os.getcwd()
 		try:
 			cmd = ['0repo', 'add', '--', new_impls_feed]
-			print "Handing off to 0repo:"
-			print " ".join(cmd)
-			print ""
+			print("Handing off to 0repo:")
+			print(" ".join(cmd))
+			print("")
 			repo.cmd.main(cmd)
 		finally:
 			os.chdir(oldcwd)
 
 	def accept_and_publish(archive_file, src_feed_name):
 		if status.tagged:
-			print "Already tagged in SCM. Not re-tagging."
+			print("Already tagged in SCM. Not re-tagging.")
 		else:
 			scm.ensure_committed()
 			head = scm.get_head_revision()
@@ -274,23 +274,23 @@ def do_release(local_feed, options):
 
 		os.unlink(new_impls_feed)
 
-		print "Push changes to public SCM repository..."
+		print("Push changes to public SCM repository...")
 		public_repos = options.public_scm_repository
 		if public_repos:
 			scm.push_head_and_release(status.release_version)
 		else:
-			print "NOTE: No public repository set => you'll have to push the tag and trunk yourself."
+			print("NOTE: No public repository set => you'll have to push the tag and trunk yourself.")
 
 		os.unlink(support.release_status_file)
 
 	if status.head_before_release:
 		head = scm.get_head_revision()
 		if status.release_version:
-			print "RESUMING release of %s %s" % (local_feed.get_name(), status.release_version)
+			print("RESUMING release of %s %s" % (local_feed.get_name(), status.release_version))
 			if options.release_version and options.release_version != status.release_version:
 				raise SafeException("Can't start release of version %s; we are currently releasing %s.\nDelete the release-status file to abort the previous release." % (options.release_version, status.release_version))
 		elif head == status.head_before_release:
-			print "Restarting release of %s (HEAD revision has not changed)" % local_feed.get_name()
+			print("Restarting release of %s (HEAD revision has not changed)" % local_feed.get_name())
 		else:
 			raise SafeException("Something went wrong with the last run:\n" +
 					    "HEAD revision for last run was " + status.head_before_release + "\n" +
@@ -298,7 +298,7 @@ def do_release(local_feed, options):
 					    "You should revert your working copy to the previous head and try again.\n" +
 					    "If you're sure you want to release from the current head, delete '" + support.release_status_file + "'")
 	else:
-		print "Releasing", local_feed.get_name()
+		print("Releasing", local_feed.get_name())
 
 	ensure_ready_to_release()
 
@@ -308,7 +308,7 @@ def do_release(local_feed, options):
 		os.chdir(status.release_version)
 		need_set_snapshot = False
 		if status.tagged:
-			print "Already tagged. Resuming the publishing process..."
+			print("Already tagged. Resuming the publishing process...")
 		elif status.new_snapshot_version:
 			head = scm.get_head_revision()
 			if head != status.head_before_release:
@@ -336,7 +336,7 @@ def do_release(local_feed, options):
 		export_prefix += os.sep + add_toplevel_dir
 
 	if status.created_archive and os.path.isfile(archive_file):
-		print "Archive already created"
+		print("Archive already created")
 	else:
 		support.backup_if_exists(archive_file)
 		scm.export(export_prefix, archive_file, status.head_at_release)
@@ -378,7 +378,7 @@ def do_release(local_feed, options):
 		abs_main = os.path.join(os.path.dirname(extracted_feed_path), extracted_impl.id, extracted_impl.main)
 		main = os.path.relpath(abs_main, archive_name + os.sep)
 		if main != extracted_impl.main:
-			print "(adjusting main: '%s' for the feed inside the archive, '%s' externally)" % (extracted_impl.main, main)
+			print("(adjusting main: '%s' for the feed inside the archive, '%s' externally)" % (extracted_impl.main, main))
 			# XXX: this is going to fail if the feed uses the new <command> syntax
 		if not os.path.exists(abs_main):
 			raise SafeException("Main executable '%s' not found after unpacking archive!" % abs_main)
@@ -389,7 +389,7 @@ def do_release(local_feed, options):
 
 	try:
 		if status.src_tests_passed:
-			print "Unit-tests already passed - not running again"
+			print("Unit-tests already passed - not running again")
 		else:
 			# Make directories read-only (checks tests don't write)
 			support.make_readonly_recursive(archive_name)
@@ -398,7 +398,7 @@ def do_release(local_feed, options):
 			status.src_tests_passed = True
 			status.save()
 	except SafeException:
-		print "(leaving extracted directory for examination)"
+		print("(leaving extracted directory for examination)")
 		fail_candidate()
 		raise
 	# Unpack it again in case the unit-tests changed anything
@@ -408,7 +408,7 @@ def do_release(local_feed, options):
 	# Generate feed for source
 	src_feed_name = '%s.xml' % archive_name
 	create_feed(src_feed_name, extracted_feed_path, archive_file, archive_name, main)
-	print "Wrote source feed as %s" % src_feed_name
+	print("Wrote source feed as %s" % src_feed_name)
 
 	# If it's a source package, compile the binaries now...
 	compiler = compile.Compiler(options, os.path.abspath(src_feed_name), release_version = status.release_version)
@@ -418,21 +418,21 @@ def do_release(local_feed, options):
 	export_changelog(previous_release)
 
 	if status.tagged:
-		raw_input('Already tagged. Press Return to resume publishing process...')
+		input('Already tagged. Press Return to resume publishing process...')
 		choice = 'Publish'
 	else:
-		print "\nCandidate release archive:", archive_file
-		print "(extracted to %s for inspection)" % os.path.abspath(archive_name)
+		print("\nCandidate release archive:", archive_file)
+		print("(extracted to %s for inspection)" % os.path.abspath(archive_name))
 
-		print "\nPlease check candidate and select an action:"
-		print "P) Publish candidate (accept)"
-		print "F) Fail candidate (delete release-status file)"
+		print("\nPlease check candidate and select an action:")
+		print("P) Publish candidate (accept)")
+		print("F) Fail candidate (delete release-status file)")
 		if previous_release:
-			print "D) Diff against release archive for %s" % previous_release
+			print("D) Diff against release archive for %s" % previous_release)
 			maybe_diff = ['Diff']
 		else:
 			maybe_diff = []
-		print "(you can also hit CTRL-C and resume this script when done)"
+		print("(you can also hit CTRL-C and resume this script when done)")
 
 		while True:
 			choice = support.get_choice(['Publish', 'Fail'] + maybe_diff)
@@ -454,7 +454,7 @@ def do_release(local_feed, options):
 						shutil.rmtree(previous_archive_name)
 				else:
 					# TODO: download it?
-					print "Sorry, archive file %s not found! Can't show diff." % previous_archive_file
+					print("Sorry, archive file %s not found! Can't show diff." % previous_archive_file)
 			else:
 				break
 

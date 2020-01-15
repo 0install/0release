@@ -76,7 +76,7 @@ class GIT(SCM):
 		else:
 			key_opts = []
 		self._run_check(['tag', '-s'] + key_opts + ['-m', 'Release %s' % version, tag, revision])
-		print "Tagged as %s" % tag
+		print("Tagged as %s" % tag)
 
 	def get_current_branch(self):
 		current_branch = self._run_stdout(['symbolic-ref', 'HEAD']).strip()
