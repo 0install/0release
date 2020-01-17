@@ -30,7 +30,7 @@
       </requires>
     </command>
 
-    <requires interface="https://apps.0install.net/python/python.xml" version='3.6..'/>
+    <requires interface="https://apps.0install.net/python/python.xml" version="3.6.."/>
 
     <requires interface="http://0install.net/tools/0repo.xml">
       <environment insert="." mode="replace" name="RELEASE_0REPO"/>
@@ -43,7 +43,7 @@
       <executable-in-var name="ZI_PUBLISH"/>
     </requires>
 
-    <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml" version='2.3.7..'>
+    <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml" version="2.3.7..">
       <environment insert="" mode="replace" name="ZI_RELEASE_ZEROINSTALL"/>
     </requires>
 
@@ -58,6 +58,6 @@
       <executable-in-var name="ZI_COMPILE"/>
     </requires>
 
-    <implementation id="." version="0.16-post"/>
+    <implementation id="." released="2020-01-17" version="0.17"/>
   </group>
 </interface>
