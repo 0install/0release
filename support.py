@@ -3,7 +3,7 @@
 
 import copy
 import os, subprocess, tarfile, platform
-import urlparse, ftplib, httplib
+import urllib.parse, ftplib, http.client
 from xml.dom import minidom
 
 from zeroinstall import SafeException
@@ -16,14 +16,14 @@ release_status_file = os.path.abspath('release-status')
 def check_call(*args, **kwargs):
 	exitstatus = subprocess.call(*args, **kwargs)
 	if exitstatus != 0:
-		if type(args[0]) in (str, unicode):
+		if type(args[0]) in (str, str):
 			cmd = args[0]
 		else:
 			cmd = ' '.join(args[0])
 		raise SafeException("Command failed with exit code %d:\n%s" % (exitstatus, cmd))
 
 def show_and_run(cmd, args):
-	print "Executing: %s %s" % (cmd, ' '.join("[%s]" % x for x in args))
+	print("Executing: %s %s" % (cmd, ' '.join("[%s]" % x for x in args)))
 	check_call(['sh', '-c', cmd, '-'] + args)
 
 def suggest_release_version(snapshot_version):
@@ -66,24 +66,24 @@ def get_singleton_impl(feed):
 	impls = feed.implementations
 	if len(impls) != 1:
 		raise SafeException("Local feed '%s' contains %d versions! I need exactly one!" % (feed.url, len(impls)))
-	return impls.values()[0]
+	return list(impls.values())[0]
 
 def backup_if_exists(name):
 	if not os.path.exists(name):
 		return
 	backup = name + '~'
 	if os.path.exists(backup):
-		print "(deleting old backup %s)" % backup
+		print("(deleting old backup %s)" % backup)
 		if os.path.isdir(backup):
 			ro_rmtree(backup)
 		else:
 			os.unlink(backup)
 	portable_rename(name, backup)
-	print "(renamed old %s as %s; will delete on next run)" % (name, backup)
+	print("(renamed old %s as %s; will delete on next run)" % (name, backup))
 
 def get_choice(options):
 	while True:
-		choice = raw_input('/'.join(options) + ': ').lower()
+		choice = input('/'.join(options) + ': ').lower()
 		if not choice: continue
 		for o in options:
 			if o.lower().startswith(choice):
@@ -103,7 +103,7 @@ def show_diff(from_dir, to_dir):
 		if in_PATH(cmd[0]):
 			code = os.spawnvp(os.P_WAIT, cmd[0], cmd + [from_dir, to_dir])
 			if code:
-				print "WARNING: command %s failed with exit code %d" % (cmd, code)
+				print("WARNING: command %s failed with exit code %d" % (cmd, code))
 			return
 
 class Status(object):
@@ -114,20 +114,20 @@ class Status(object):
 			setattr(self, name, None)
 
 		if os.path.isfile(release_status_file):
-			for line in file(release_status_file):
-				assert line.endswith('\n')
-				line = line[:-1]
-				name, value = line.split('=')
-				setattr(self, name, value)
-				info("Loaded status %s=%s", name, value)
+			with open(release_status_file, 'r') as stream:
+				for line in stream.readlines():
+					assert line.endswith('\n')
+					line = line[:-1]
+					name, value = line.split('=')
+					setattr(self, name, value)
+					info("Loaded status %s=%s", name, value)
 
 	def save(self):
 		tmp_name = release_status_file + '.new'
-		tmp = file(tmp_name, 'w')
 		try:
-			lines = ["%s=%s\n" % (name, getattr(self, name)) for name in self.__slots__ if getattr(self, name)]
-			tmp.write(''.join(lines))
-			tmp.close()
+			with open(tmp_name, 'w') as tmp:
+				lines = ["%s=%s\n" % (name, getattr(self, name)) for name in self.__slots__ if getattr(self, name)]
+				tmp.write(''.join(lines))
 			portable_rename(tmp_name, release_status_file)
 			info("Wrote status to %s", release_status_file)
 		except:
@@ -140,8 +140,8 @@ def unpack_tarball(archive_file):
 	#tar.extractall('.', members = members) # Python >= 2.5 only
 	for tarinfo in members:
 		tarinfo = copy.copy(tarinfo)
-		tarinfo.mode |= 0600
-		tarinfo.mode &= 0755
+		tarinfo.mode |= 0o600
+		tarinfo.mode &= 0o755
 		tar.extract(tarinfo, '.')
 
 def load_feed(path):
@@ -150,7 +150,7 @@ def load_feed(path):
 
 def get_archive_basename(impl):
 	# "2" means "path" (for Python 2.4)
-	return os.path.basename(urlparse.urlparse(impl.download_sources[0].url)[2])
+	return os.path.basename(urllib.parse.urlparse(impl.download_sources[0].url)[2])
 
 def make_readonly_recursive(path):
 	for root, dirs, files in os.walk(path):
@@ -167,6 +167,6 @@ def make_archives_relative(feed):
 		assert href, 'Missing href on %r' % elem
 		if '/' in href:
 			elem.setAttribute('href', href.rsplit('/', 1)[1])
-	with open(feed, 'wb') as stream:
+	with open(feed, 'w') as stream:
 		doc.writexml(stream)
-		stream.write(b'\n')
+		stream.write('\n')

@@ -1,0 +1,10 @@
+# To check coverage:
+# 1. Uncomment coverage lines in 0release.
+# 2. Set COVERAGE_PROCESS_START to point at this file.
+# 3. 0install run -w 'shift; python3-coverage run' --command=test ../0release.xml
+# 4. In /tmp/coverage: python3-coverage combine *
+# 5. In /tmp/coverage: python3-coverage html -i
+
+[run]
+parallel=True
+data_file=/tmp/coverage/cov

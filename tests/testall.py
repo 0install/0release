@@ -24,6 +24,6 @@ else:
 
 a = unittest.TextTestRunner(verbosity=2).run(alltests)
 
-print "\nResult", a
+print("\nResult", a)
 if not a.wasSuccessful():
 	sys.exit(1)
