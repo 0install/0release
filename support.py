@@ -16,7 +16,7 @@ release_status_file = os.path.abspath('release-status')
 def check_call(*args, **kwargs):
 	exitstatus = subprocess.call(*args, **kwargs)
 	if exitstatus != 0:
-		if type(args[0]) in (str, str):
+		if type(args[0]) == str:
 			cmd = args[0]
 		else:
 			cmd = ' '.join(args[0])
