@@ -10,51 +10,45 @@
 
   <homepage>https://docs.0install.net/tools/0release/</homepage>
 
-  <feed-for interface="http://0install.net/2007/interfaces/0release.xml"/>
+  <feed-for interface="https://apps.0install.net/0install/0release.xml"/>
 
   <release:management xmlns:release="http://zero-install.sourceforge.net/2007/namespaces/0release">
     <!-- Update the copy of the version number -->
     <release:action phase="commit-release">sed -i &quot;s/^version = '.*'$/version = '$RELEASE_VERSION'/&quot; 0release</release:action>
   </release:management>
 
-  <group license="OSI Approved :: GNU Lesser General Public License (LGPL)" main="0release">
+  <group license="OSI Approved :: GNU Lesser General Public License (LGPL)">
     <command name="run" path="0release">
-      <runner interface="https://apps.0install.net/python/python.xml"/>
+      <runner interface="https://apps.0install.net/python/python.xml" version="3.6.."/>
     </command>
 
     <command name="test" path="tests/testall.py">
-      <runner interface="https://apps.0install.net/python/python.xml"/>
+      <runner interface="https://apps.0install.net/python/python.xml" version="3.6.."/>
       <executable-in-path name="0release"/>
       <requires interface="https://apps.0install.net/devel/make.xml">
-	<executable-in-path name="make"/>
+        <executable-in-path name="make"/>
       </requires>
     </command>
 
-    <requires interface="https://apps.0install.net/python/python.xml" version="3.6.."/>
-
-    <requires interface="http://0install.net/tools/0repo.xml">
+    <requires interface="https://apps.0install.net/0install/0repo.xml" version="0.2..">
       <environment insert="." mode="replace" name="RELEASE_0REPO"/>
-      <version not-before="0.2"/>
     </requires>
 
-    <requires interface="http://0install.net/2006/interfaces/0publish">
-      <version not-before="0.17"/>
+    <requires interface="https://apps.0install.net/0install/0publish.xml" version="0.17..">
       <environment if-0install-version="..!1.13" insert="0publish" mode="replace" name="ZI_PUBLISH"/>
       <executable-in-var name="ZI_PUBLISH"/>
     </requires>
 
-    <requires interface="http://0install.net/2007/interfaces/ZeroInstall.xml" version="2.3.7..">
+    <requires interface="https://apps.0install.net/0install/0install-python.xml" version="2.3.7..">
       <environment insert="" mode="replace" name="ZI_RELEASE_ZEROINSTALL"/>
     </requires>
 
-    <requires interface="http://0install.net/2008/interfaces/0test.xml">
-      <version not-before="0.4-post"/>
+    <requires interface="https://apps.0install.net/0install/0test.xml" version="0.4-post..">
       <environment if-0install-version="..!1.13" insert="0test" mode="replace" name="ZI_TEST"/>
       <executable-in-var name="ZI_TEST"/>
     </requires>
 
-    <requires interface="http://0install.net/2006/interfaces/0compile.xml">
-      <version not-before="1.2"/>
+    <requires interface="https://apps.0install.net/0install/0compile.xml" version="1.2..">
       <executable-in-var name="ZI_COMPILE"/>
     </requires>
 
